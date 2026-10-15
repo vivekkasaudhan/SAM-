@@ -64,3 +64,43 @@ async def get_forecast(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/forecast/groundwater/{well_id}")
+@router.get("/forecast/wells/{well_id}")
+def get_groundwater_forecast(
+    well_id: str,
+    horizon: int = Query(7, ge=1, le=15, description="Forecast horizon in days (1 to 15)"),
+    include_backtest: bool = Query(True, description="Include chronological holdout backtest evaluation"),
+    persist: bool = Query(False, description="Persist generated forecast into water_level_forecasts table"),
+):
+    """
+    Groundwater level forecast endpoint.
+    Routes to GroundwaterForecastingService for hydrological baseline modeling and validation.
+    """
+    from app.services.forecasting_service import GroundwaterForecastingService
+    from app.models.database import SessionLocal, Well
+
+    db = SessionLocal()
+    try:
+        w = db.query(Well).filter(Well.id == well_id).first()
+        if not w:
+            raise HTTPException(status_code=404, detail=f"Well station '{well_id}' was not found.")
+
+        service = GroundwaterForecastingService(db=db)
+        return service.generate_forecast(
+            well_id=well_id,
+            horizon_days=horizon,
+            include_backtest=include_backtest,
+            persist=persist,
+            db=db,
+        )
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Groundwater forecasting failed: {str(e)}")
+    finally:
+        db.close()
+

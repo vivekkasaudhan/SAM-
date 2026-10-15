@@ -98,6 +98,52 @@ class HistoricalAnalysisResponse(BaseModel):
     readings: List[ReadingOut] = []
 
 
+class ForecastPointOut(BaseModel):
+    timestamp: str
+    day_offset: int
+    estimated_water_level_m: float
+    confidence_lower: float
+    confidence_upper: float
+    uncertainty_margin_m: float
+    expected_rainfall_mm: float
+    trend_component_m: float
+    recharge_component_m: float
+
+
+class ForecastBacktestOut(BaseModel):
+    status: str
+    message: Optional[str] = None
+    mae: Optional[float] = None
+    rmse: Optional[float] = None
+    mean_bias_m: Optional[float] = None
+    train_samples: int = 0
+    test_samples: int = 0
+    train_period: Optional[Dict[str, str]] = None
+    test_period: Optional[Dict[str, str]] = None
+    points: Optional[List[Dict[str, Any]]] = None
+    limitations: List[str] = []
+
+
+class GroundwaterForecastResponse(BaseModel):
+    well_id: str
+    well_name: str
+    status: str
+    reason: Optional[str] = None
+    is_demo: bool
+    forecast_type: str
+    disclaimer: str
+    horizon_days: int
+    generated_at: str
+    model_name: str
+    model_version: str
+    data_freshness: Dict[str, Any]
+    environmental_drivers: Dict[str, Any]
+    predictions: List[ForecastPointOut] = []
+    backtest: Optional[ForecastBacktestOut] = None
+    persisted_forecast_id: Optional[int] = None
+    model_config = {"protected_namespaces": ()}
+
+
 class CreatorInfo(BaseModel):
     id: int
     name: Optional[str] = None
@@ -797,3 +843,77 @@ def get_well_history_analysis(
     # Cast readings to ReadingOut schema
     analysis["readings"] = [ReadingOut.model_validate(r) for r in analysis.get("readings", [])]
     return analysis
+
+
+@router.get("/wells/{well_id}/forecast", response_model=GroundwaterForecastResponse)
+def get_well_forecast(
+    well_id: str,
+    horizon: int = Query(7, ge=1, le=15, description="Forecast horizon in days (1 to 15)"),
+    include_backtest: bool = Query(True, description="Include chronological holdout backtest evaluation"),
+    persist: bool = Query(False, description="Persist generated forecast into water_level_forecasts table"),
+    db: Session = Depends(get_db),
+):
+    """
+    Groundwater-level forecasting service for a specific monitoring station.
+    - Transparent baseline hydrological model with trend, seasonality, and lithology-informed rainfall recharge.
+    - Supports 7 to 15 day horizons based on observation evidence.
+    - Strict data sufficiency checks: returns INSUFFICIENT_DATA without inventing synthetic predictions.
+    - Non-data-leakage chronological backtesting reporting MAE, RMSE, and bias.
+    - Fully distinguishes DEMO/SIMULATED vs PHYSICAL telemetry.
+    """
+    from app.services.forecasting_service import GroundwaterForecastingService
+    w = db.query(Well).filter(Well.id == well_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail=f"Well station '{well_id}' was not found.")
+
+    service = GroundwaterForecastingService(db=db)
+    try:
+        return service.generate_forecast(
+            well_id=well_id,
+            horizon_days=horizon,
+            include_backtest=include_backtest,
+            persist=persist,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Groundwater forecasting failed: {str(e)}")
+
+
+@router.get("/wells/{well_id}/forecast/history")
+def get_well_forecast_history(
+    well_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Retrieve persisted historical forecast runs for auditing and validation."""
+    from app.models.database import WaterLevelForecast
+    w = db.query(Well).filter(Well.id == well_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail=f"Well station '{well_id}' was not found.")
+
+    history = (
+        db.query(WaterLevelForecast)
+        .filter(WaterLevelForecast.well_id == well_id)
+        .order_by(WaterLevelForecast.generated_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": h.id,
+            "well_id": h.well_id,
+            "generated_at": h.generated_at.isoformat() if h.generated_at else None,
+            "horizon_days": h.horizon_days,
+            "model_name": h.model_name,
+            "model_version": h.model_version,
+            "status": h.status,
+            "is_demo": h.is_demo,
+            "forecast_type": h.forecast_type,
+            "metrics": h.metrics,
+            "environmental_drivers": h.environmental_drivers,
+            "prediction_count": len(h.predictions or []),
+        }
+        for h in history
+    ]

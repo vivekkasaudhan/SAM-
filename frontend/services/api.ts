@@ -132,6 +132,69 @@ export interface HistoricalAnalysisResponse {
   }>;
 }
 
+export interface ForecastPoint {
+  timestamp: string;
+  day_offset: number;
+  estimated_water_level_m: number;
+  confidence_lower: number;
+  confidence_upper: number;
+  uncertainty_margin_m: number;
+  expected_rainfall_mm: number;
+  trend_component_m: number;
+  recharge_component_m: number;
+}
+
+export interface ForecastBacktest {
+  status: string;
+  message?: string;
+  mae?: number;
+  rmse?: number;
+  mean_bias_m?: number;
+  train_samples: number;
+  test_samples: number;
+  train_period?: { start: string; end: string };
+  test_period?: { start: string; end: string };
+  points?: Array<{
+    timestamp: string;
+    actual_water_level_m: number;
+    predicted_water_level_m: number;
+    error_m: number;
+  }>;
+  limitations: string[];
+}
+
+export interface GroundwaterForecastResponse {
+  well_id: string;
+  well_name: string;
+  status: 'SUCCESS' | 'INSUFFICIENT_DATA';
+  reason?: string;
+  is_demo: boolean;
+  forecast_type: 'DEMO_SIMULATED' | 'PHYSICAL_TELEMETRY';
+  disclaimer: string;
+  horizon_days: number;
+  generated_at: string;
+  model_name: string;
+  model_version: string;
+  data_freshness: {
+    total_readings: number;
+    data_span_hours: number;
+    data_span_days?: number;
+    latest_observation?: string;
+    earliest_observation?: string;
+  };
+  environmental_drivers: {
+    rainfall_forecast_source: string;
+    expected_rainfall_sum_mm: number;
+    lithology_conductivity_factor: number;
+    dominant_lithology: string;
+    baseline_water_level_m?: number;
+    linear_trend_m_per_day?: number;
+  };
+  predictions: ForecastPoint[];
+  backtest?: ForecastBacktest | null;
+  persisted_forecast_id?: number;
+}
+
 export const wellService = {
   async getWells(filters?: {
     country?: string;
@@ -174,6 +237,19 @@ export const wellService = {
     }
   ): Promise<HistoricalAnalysisResponse> {
     const response = await api.get<HistoricalAnalysisResponse>(`/api/wells/${id}/history-analysis`, {
+      params,
+    });
+    return response.data;
+  },
+  async getWellForecast(
+    id: string,
+    params?: {
+      horizon?: number;
+      include_backtest?: boolean;
+      persist?: boolean;
+    }
+  ): Promise<GroundwaterForecastResponse> {
+    const response = await api.get<GroundwaterForecastResponse>(`/api/wells/${id}/forecast`, {
       params,
     });
     return response.data;

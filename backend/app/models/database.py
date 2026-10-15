@@ -250,6 +250,12 @@ class Well(Base):
         cascade="all, delete-orphan",
         order_by="LithologyLayer.from_depth_m",
     )
+    forecasts = relationship(
+        "WaterLevelForecast",
+        back_populates="well",
+        cascade="all, delete-orphan",
+        order_by="WaterLevelForecast.generated_at.desc()",
+    )
 
 
 # 13. sensors
@@ -322,6 +328,30 @@ class LithologyLayer(Base):
     well = relationship("Well", back_populates="lithology_layers")
     creator = relationship("User", foreign_keys=[created_by_user_id])
     updater = relationship("User", foreign_keys=[updated_by_user_id])
+
+
+# 15. water_level_forecasts
+class WaterLevelForecast(Base):
+    """
+    Dedicated persistent store for groundwater level forecasts.
+    Maintains a strict boundary: forecast records are NEVER mixed into observed readings.
+    """
+    __tablename__ = "water_level_forecasts"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    well_id = Column(String(50), ForeignKey("wells.id", ondelete="CASCADE"), nullable=False, index=True)
+    generated_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    horizon_days = Column(Integer, default=7, nullable=False)
+    model_name = Column(String(100), default="AquaSense-HydrologicalBaseline-v1", nullable=False)
+    model_version = Column(String(50), default="1.0.0", nullable=False)
+    status = Column(String(50), default="SUCCESS", nullable=False)  # SUCCESS, INSUFFICIENT_DATA
+    is_demo = Column(Boolean, default=True, nullable=False)
+    forecast_type = Column(String(50), default="DEMO_SIMULATED", nullable=False)  # DEMO_SIMULATED, PHYSICAL_TELEMETRY
+    predictions = Column(JSON, nullable=True)
+    metrics = Column(JSON, nullable=True)
+    environmental_drivers = Column(JSON, nullable=True)
+
+    well = relationship("Well", back_populates="forecasts")
 
 
 # Database Engine and Session Factory

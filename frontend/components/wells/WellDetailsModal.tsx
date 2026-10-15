@@ -22,6 +22,7 @@ import {
   Waves,
   LineChart as LineChartIcon,
   User,
+  TrendingUp,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -40,6 +41,7 @@ import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { wellService, authService, isSubadmin, HistoricalAnalysisResponse } from '@/services/api';
 import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
 import { LithologySection } from '@/components/lithology/LithologySection';
+import { WellForecastView } from './WellForecastView';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export type HistoryRange = 'recent' | '1y' | '2y' | '3y' | 'custom';
@@ -61,7 +63,7 @@ export function WellDetailsModal({
   const [readings, setReadings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mainModalTab, setMainModalTab] = useState<'telemetry' | 'lithology'>('telemetry');
+  const [mainModalTab, setMainModalTab] = useState<'telemetry' | 'lithology' | 'forecast'>('telemetry');
   const [activeHistoryTab, setActiveHistoryTab] = useState<'water-level' | 'water-quality'>('water-level');
 
   // Task 2: Historical Water-Level Analysis state
@@ -296,6 +298,20 @@ export function WellDetailsModal({
                 {well.lithology_count}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setMainModalTab('forecast')}
+            className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all ${
+              mainModalTab === 'forecast'
+                ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <TrendingUp className="h-4 w-4 text-purple-500" />
+            <span>Groundwater Level Forecasting</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/20 text-purple-600 dark:text-purple-400 font-mono">
+              7–15d
+            </span>
           </button>
         </div>
 
@@ -554,6 +570,14 @@ export function WellDetailsModal({
                         }`}
                       >
                         Water Quality
+                      </button>
+                      <button
+                        onClick={() => setMainModalTab('forecast')}
+                        className="px-2.5 py-1 rounded-lg font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-all flex items-center gap-1"
+                        title="Open Groundwater Level Forecasting & Backtesting"
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Forecast ↗</span>
                       </button>
                     </div>
                   </div>
@@ -899,11 +923,17 @@ export function WellDetailsModal({
                   </div>
                 </div>
               </>
-            ) : (
+            ) : mainModalTab === 'lithology' ? (
               <LithologySection
                 well={well}
                 waterLevelM={reading?.water_level_m}
                 onProfileUpdated={() => fetchWellData(well.id)}
+              />
+            ) : (
+              <WellForecastView
+                wellId={well.id}
+                well={well}
+                historicalReadings={readings}
               />
             )
           )
