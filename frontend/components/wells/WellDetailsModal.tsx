@@ -48,6 +48,7 @@ import {
   Alert,
 } from '@/services/api';
 import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
+import { WaterFlowPipe } from '@/components/visualization/WaterFlowPipe';
 import { LithologySection } from '@/components/lithology/LithologySection';
 import { WellForecastView } from './WellForecastView';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -530,9 +531,19 @@ export function WellDetailsModal({
                       </div>
                     )}
 
+                    {/* Water Flow Animation Pipe */}
+                    <div className="w-full mt-3">
+                      <WaterFlowPipe
+                        orientation="horizontal"
+                        flowDirection="forward"
+                        active={true}
+                        label="Aquifer Subsurface Inflow"
+                      />
+                    </div>
+
                     <button
                       onClick={() => setMainModalTab('lithology')}
-                      className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all shadow-2xs"
+                      className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all shadow-2xs cursor-pointer"
                     >
                       <Layers className="h-3.5 w-3.5" />
                       <span>View Lithology Profile &rarr;</span>
@@ -546,20 +557,20 @@ export function WellDetailsModal({
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-muted-foreground">Data Pipeline:</span>
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                             readingStatus === 'LIVE'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
                               : readingStatus === 'ESTIMATED'
-                              ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30'
-                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                              ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25'
+                              : 'bg-muted/80 text-muted-foreground border-border/70'
                           }`}
                         >
                           {readingStatus === 'LIVE' ? (
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-2xs inline-block" />
                           ) : (
-                            <Radio className="h-3 w-3 text-amber-500" />
+                            <Radio className="h-2.5 w-2.5 text-cyan-500" />
                           )}
-                          <span>{readingStatus}</span>
+                          <span>{readingStatus === 'LIVE' ? 'Physical Sensor' : readingStatus === 'ESTIMATED' ? 'Spatial Estimate' : 'Simulated Model'}</span>
                         </span>
                       </div>
 

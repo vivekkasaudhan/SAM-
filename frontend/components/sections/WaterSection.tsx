@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus, AlertTriangle, AlertOctagon } from 'lu
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataSourceBadge } from '@/components/dashboard/DataSourceBadge';
 import { WaterLevelChart } from '@/components/charts/Charts';
+import { WaterFlowPipe } from '@/components/visualization/WaterFlowPipe';
 import type { WaterLevelData } from '@/types/environment';
 
 interface WaterSectionProps {
@@ -132,12 +133,15 @@ export function WaterSection({ waterLevel: wl, lat, lon }: WaterSectionProps) {
         </div>
       </div>
 
-      {typeof wl.flow_rate_cumecs === 'number' && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>💧 Flow Rate:</span>
-          <span className="font-semibold text-foreground">{wl.flow_rate_cumecs.toFixed(1)} m³/s (cumecs)</span>
-        </div>
-      )}
+      {/* Flow Rate & Pipe Flow Component */}
+      <div className="pt-1">
+        <WaterFlowPipe
+          orientation="horizontal"
+          active={true}
+          flowRateLpm={typeof wl.flow_rate_cumecs === 'number' ? wl.flow_rate_cumecs * 1000 * 60 : null}
+          label={typeof wl.flow_rate_cumecs === 'number' ? 'Measured River Conduit Discharge' : 'Aquifer Intake & Recharge Conduit'}
+        />
+      </div>
 
       {/* Time-series chart */}
       <Card>

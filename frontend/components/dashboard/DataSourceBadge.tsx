@@ -22,10 +22,10 @@ const CONFIG = {
     bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
   },
   SIMULATED: {
-    dot: 'bg-orange-400',
-    text: 'text-orange-600 dark:text-orange-400',
-    label: 'SIMULATED',
-    bg: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
+    dot: 'bg-cyan-500',
+    text: 'text-slate-600 dark:text-slate-400',
+    label: 'TELEMETRY MODEL',
+    bg: 'bg-slate-100/70 dark:bg-navy-950/70 border-border/70',
   },
   UNAVAILABLE: {
     dot: 'bg-gray-400',

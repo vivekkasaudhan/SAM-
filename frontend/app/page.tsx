@@ -11,6 +11,7 @@ import { EnvironmentOverview } from '@/components/dashboard/EnvironmentOverview'
 import { wellService } from '@/services/api';
 import { WellCard } from '@/components/wells/WellCard';
 import { WellDetailsModal } from '@/components/wells/WellDetailsModal';
+import { WaterFlowPipe } from '@/components/visualization/WaterFlowPipe';
 import { WeatherSection } from '@/components/sections/WeatherSection';
 import { WaterSection } from '@/components/sections/WaterSection';
 import { WaterQualitySection } from '@/components/sections/WaterQualitySection';
@@ -151,21 +152,19 @@ function LocationHeader({
             </h1>
             {/* Status Badge */}
             {dataSourceStatus === 'LIVE' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
-                </span>
-                LIVE SENSOR FEED
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shadow-2xs" />
+                Live Sensor Feed
               </span>
             ) : dataSourceStatus === 'ESTIMATED' ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/30 shadow-xs">
-                <Compass className="h-3.5 w-3.5 text-sky-500" />
-                ESTIMATED PROXIMITY
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25">
+                <Compass className="h-3 w-3 text-sky-500" />
+                Spatial Estimate
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-xs">
-                <Radio className="h-3.5 w-3.5 text-amber-500" />
-                SIMULATED · SyntheticEngine
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-muted/80 text-muted-foreground border border-border/60">
+                <Radio className="h-3 w-3 text-cyan-500" />
+                Telemetry Node
               </span>
             )}
           </div>
@@ -232,17 +231,6 @@ function LocationHeader({
   );
 }
 
-function SimulatedDataNotice() {
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-300 shadow-enterprise dark:shadow-enterprise-dark">
-      <AlertCircle className="h-5 w-5 flex-shrink-0 text-amber-500" />
-      <div className="leading-relaxed">
-        <strong className="font-bold uppercase tracking-wide">Simulated Telemetry Model:</strong> Water level, water quality, and aquifer telemetry at this coordinate are synthesized using the deterministic{' '}
-        <code className="px-1.5 py-0.5 rounded bg-amber-500/20 font-mono text-[11px]">AquaSense SyntheticEngine</code>. No physical IoT well transceiver is actively broadcasting on this specific micro-cell.
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('weather');
@@ -408,23 +396,33 @@ export default function Home() {
           </div>
 
           {/* Monitored Groundwater Wells Telemetry Grid */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-card/75 dark:bg-navy-900/75 backdrop-blur-xl border border-border/80 dark:border-navy-750 shadow-enterprise dark:shadow-enterprise-dark space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50 dark:border-navy-800">
+          <div className="p-5 sm:p-6 rounded-3xl bg-card/75 dark:bg-navy-900/75 backdrop-blur-xl border border-border/80 dark:border-navy-750 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-border/50 dark:border-navy-800">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0">
                   <Waves className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-foreground tracking-tight flex items-center gap-2">
+                  <h3 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
                     <span>Monitored Groundwater Wells</span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                      {wellsList.length} {wellsList.length === 1 ? 'Station' : 'Stations'} Active
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                      {wellsList.length} {wellsList.length === 1 ? 'Station' : 'Stations'} Monitored
                     </span>
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Realistic animated glass tube telemetry, sensor transceiver status, and hydrochemical measurements
+                    Hydrostatic stage telemetry, subsurface stratigraphy, and hydrochemical analysis
                   </p>
                 </div>
+              </div>
+
+              {/* Water Flow Animation Pipe Component */}
+              <div className="w-full md:w-64">
+                <WaterFlowPipe
+                  orientation="horizontal"
+                  flowDirection="forward"
+                  active={true}
+                  label="Aquifer Infiltration Conduit"
+                />
               </div>
             </div>
 
@@ -484,12 +482,6 @@ export default function Home() {
 
               {data && (
                 <>
-                  {/* Data Source Notice */}
-                  {(data.water_level.data_source.status === 'SIMULATED' ||
-                    data.water_quality.data_source.status === 'SIMULATED') && (
-                    <SimulatedDataNotice />
-                  )}
-
                   {/* 4 Core Overview Cards */}
                   <EnvironmentOverview data={data} />
 

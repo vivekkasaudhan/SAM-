@@ -93,8 +93,7 @@ def test_historical_analysis_ranges_and_gaps():
     assert data["well_id"] == "WELL-NIT-01"
     assert data["selected_range"] == "1y"
     assert data["aggregation"] == "day"
-    assert data["has_missing_data"] is True
-    assert len(data["missing_periods"]) > 0
+    assert isinstance(data["has_missing_data"], bool)
 
     # Test 2Y and 3Y
     res_2y = client.get("/api/wells/WELL-NIT-01/history-analysis?range=2y")
@@ -104,6 +103,12 @@ def test_historical_analysis_ranges_and_gaps():
     res_3y = client.get("/api/wells/WELL-NIT-01/history-analysis?range=3y")
     assert res_3y.status_code == 200
     assert res_3y.json()["selected_range"] == "3y"
+
+    # Test missing data reporting for range prior to telemetry history
+    res_prior = client.get("/api/wells/WELL-NIT-01/history-analysis?range=custom&start_date=2020-01-01T00:00:00Z&end_date=2021-01-01T00:00:00Z")
+    assert res_prior.status_code == 200
+    assert res_prior.json()["has_missing_data"] is True
+    assert len(res_prior.json()["missing_periods"]) > 0
 
 
 def test_historical_readings_endpoint_backward_compatibility():

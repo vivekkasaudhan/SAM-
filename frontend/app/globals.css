@@ -75,10 +75,57 @@
     transform: translateX(0) scaleY(1);
   }
   50% {
-    transform: translateX(-25%) scaleY(1.08);
+    transform: translateX(-25%) scaleY(1.06);
   }
   100% {
-    transform: translateX(-50%) scaleY(0.96);
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+
+@keyframes bubbleFloat {
+  0% {
+    transform: translateY(100%) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-20%) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes pipeFlowH {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pipeFlowV {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pipeGleam {
+  0% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0.15;
   }
 }
 
