@@ -75,6 +75,9 @@ def setup_lithology_test_context():
                 is_active=True,
             )
             session.add(well1)
+        else:
+            well1.created_by = sub1.id
+            well1.total_depth_m = 60.0
 
         # 5. Station created by Subadmin 2
         well2 = session.query(Well).filter(Well.id == "WELL-LITHO-02").first()
@@ -93,6 +96,9 @@ def setup_lithology_test_context():
                 is_active=True,
             )
             session.add(well2)
+        else:
+            well2.created_by = sub2.id
+            well2.total_depth_m = 100.0
 
         # Clean any existing lithology layers for these test stations
         session.query(LithologyLayer).filter(

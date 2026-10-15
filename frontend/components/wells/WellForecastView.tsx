@@ -19,7 +19,12 @@ import {
   Gauge,
   ChevronDown,
   ChevronUp,
+  Play,
+  Pause,
+  RotateCcw,
+  Waves,
 } from 'lucide-react';
+import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -59,6 +64,8 @@ export function WellForecastView({
   const [contextLoading, setContextLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState<boolean>(false);
+  const [activeForecastDay, setActiveForecastDay] = useState<number>(0);
+  const [isPlayingTrajectory, setIsPlayingTrajectory] = useState<boolean>(false);
 
   // Fetch forecast data
   const fetchForecast = useCallback(async (h: 7 | 15) => {
@@ -228,6 +235,34 @@ export function WellForecastView({
     }
     return null;
   }, [forecast, dangerThreshold, warningThreshold]);
+
+  // Trajectory playback animation effect
+  useEffect(() => {
+    if (!isPlayingTrajectory) return;
+    const interval = setInterval(() => {
+      setActiveForecastDay((prev) => {
+        if (prev >= horizon) {
+          setIsPlayingTrajectory(false);
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 1100);
+    return () => clearInterval(interval);
+  }, [isPlayingTrajectory, horizon]);
+
+  const activeLevel = useMemo(() => {
+    if (activeForecastDay === 0) {
+      return latestObs?.water_level_m ?? 0;
+    }
+    const pred = forecast?.predictions?.[activeForecastDay - 1];
+    return pred ? pred.estimated_water_level_m : (latestObs?.water_level_m ?? 0);
+  }, [activeForecastDay, latestObs, forecast]);
+
+  const activePredPoint = useMemo(() => {
+    if (activeForecastDay === 0) return null;
+    return forecast?.predictions?.[activeForecastDay - 1] ?? null;
+  }, [activeForecastDay, forecast]);
 
   if (loading && !forecast) {
     return (
@@ -499,6 +534,183 @@ export function WellForecastView({
           </span>
         </div>
       )}
+
+      {/* ── Dynamic Animated Forecast Water Level Simulator ── */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-cyan-500/10 to-blue-500/10 border border-purple-500/30 dark:border-purple-500/25 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-600 dark:text-purple-400">
+              <Waves className="h-4 w-4" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
+                <span>Animated Groundwater Level Projection Simulator</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-ping" />
+                  HIGH-SPEED FLOW ACTIVE
+                </span>
+              </h4>
+              <p className="text-[11px] text-muted-foreground">
+                Watch the aquifer column dynamically adapt and animate its water stage across the {horizon}-day forecast trajectory.
+              </p>
+            </div>
+          </div>
+
+          {/* Timeline Playback Controls */}
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsPlayingTrajectory(!isPlayingTrajectory)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition-all cursor-pointer"
+            >
+              {isPlayingTrajectory ? (
+                <>
+                  <Pause className="h-3.5 w-3.5" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="h-3.5 w-3.5 fill-white" />
+                  <span>Play Trajectory</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsPlayingTrajectory(false);
+                setActiveForecastDay(0);
+              }}
+              className="p-1.5 rounded-xl bg-card dark:bg-navy-900 border border-border/60 text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+              title="Reset to Day 0 (Current Observation)"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Simulator Row */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center pt-1">
+          {/* Left Column: Animated Water Level Column Tube */}
+          <div className="md:col-span-4 flex items-center justify-center p-3 rounded-2xl bg-card/60 dark:bg-navy-900/60 border border-border/50">
+            <div className="flex flex-col items-center gap-2">
+              <WellWaterLevel
+                waterLevel={activeLevel}
+                warningLevel={warningThreshold}
+                dangerLevel={dangerThreshold}
+                height={170}
+                compact={false}
+                showTicks={true}
+                flowSpeed="fast"
+                animateForecast={true}
+                wellName={well?.name}
+              />
+              <span className="text-[11px] font-mono font-bold text-foreground">
+                {activeForecastDay === 0 ? 'Current Observation' : `Forecast Day +${activeForecastDay}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Column: Timeline Scrubber & Metrics */}
+          <div className="md:col-span-8 space-y-3">
+            {/* Day Selector Buttons */}
+            <div className="space-y-1">
+              <div className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                <span>Select Timeline Horizon Day:</span>
+                <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">
+                  {activeForecastDay === 0
+                    ? 'Day 0 (Latest Recorded)'
+                    : `Day +${activeForecastDay} (${activePredPoint?.timestamp ? formatChartDate(activePredPoint.timestamp) : ''})`}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPlayingTrajectory(false);
+                    setActiveForecastDay(0);
+                  }}
+                  className={`px-2.5 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer ${
+                    activeForecastDay === 0
+                      ? 'bg-cyan-500 text-white shadow-xs'
+                      : 'bg-card dark:bg-navy-900 border border-border/60 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Now
+                </button>
+                {Array.from({ length: horizon }, (_, i) => i + 1).map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      setIsPlayingTrajectory(false);
+                      setActiveForecastDay(day);
+                    }}
+                    className={`px-2.5 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer ${
+                      activeForecastDay === day
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-card dark:bg-navy-900 border border-border/60 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    +{day}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Simulated Stage Readout Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
+              <div className="p-2.5 rounded-xl bg-card dark:bg-navy-900 border border-border/60">
+                <span className="text-[10px] text-muted-foreground">Simulated Water Stage</span>
+                <div className="text-base font-black font-mono text-foreground mt-0.5">
+                  {Number(activeLevel).toFixed(2)} m
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-card dark:bg-navy-900 border border-border/60">
+                <span className="text-[10px] text-muted-foreground">Trajectory Delta</span>
+                <div className="text-base font-black font-mono mt-0.5">
+                  {activeForecastDay === 0 ? (
+                    <span className="text-muted-foreground">Baseline</span>
+                  ) : (
+                    <span
+                      className={
+                        Number(activeLevel) - Number(latestObs?.water_level_m || 0) > 0.05
+                          ? 'text-rose-500'
+                          : Number(activeLevel) - Number(latestObs?.water_level_m || 0) < -0.05
+                          ? 'text-emerald-500'
+                          : 'text-cyan-500'
+                      }
+                    >
+                      {Number(activeLevel) - Number(latestObs?.water_level_m || 0) > 0 ? '+' : ''}
+                      {(Number(activeLevel) - Number(latestObs?.water_level_m || 0)).toFixed(2)} m
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-card dark:bg-navy-900 border border-border/60 col-span-2 sm:col-span-1">
+                <span className="text-[10px] text-muted-foreground">Risk Status</span>
+                <div className="text-xs font-bold mt-1">
+                  {activeLevel >= dangerThreshold ? (
+                    <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-600 dark:text-rose-400 font-extrabold border border-rose-500/30">
+                      CRITICAL DANGER
+                    </span>
+                  ) : activeLevel >= warningThreshold ? (
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-extrabold border border-amber-500/30">
+                      WARNING STAGE
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold border border-emerald-500/30">
+                      SAFE / NORMAL
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── Forecast Visualization Chart ────────────────────────────── */}
       <div className="p-5 rounded-2xl bg-card dark:bg-navy-900/70 border border-border/70 dark:border-navy-800 space-y-3">

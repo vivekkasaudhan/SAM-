@@ -32,6 +32,10 @@ export interface WellWaterLevelProps {
   wellName?: string;
   /** Additional CSS class names */
   className?: string;
+  /** Speed of water flow animation: 'fast' simulates moving water in speed */
+  flowSpeed?: 'normal' | 'fast';
+  /** Whether this water column represents an animated forecast projection */
+  animateForecast?: boolean;
 }
 
 export function WellWaterLevel({
@@ -49,6 +53,8 @@ export function WellWaterLevel({
   showTicks = true,
   wellName,
   className = '',
+  flowSpeed = 'fast',
+  animateForecast = false,
 }: WellWaterLevelProps) {
   // Validate thresholds
   const safeWarningLevel = typeof warningLevel === 'number' && !isNaN(warningLevel) ? warningLevel : 7.5;
@@ -250,20 +256,43 @@ export function WellWaterLevel({
             </div>
           )}
 
-          {/* ── Realistic Liquid Column (Smooth Height Transition) ── */}
+          {/* ── Realistic Liquid Column (Smooth Height Transition & Fast Flow Motion) ── */}
           {hasReading ? (
             <div
-              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${liquidGradient.fill} transition-[height] duration-700 ease-in-out z-10 overflow-hidden`}
+              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${liquidGradient.fill} transition-[height] duration-700 ease-in-out z-10 overflow-hidden ${
+                animateForecast ? 'motion-safe:animate-[forecastGlowPulse_2s_ease-in-out_infinite]' : ''
+              }`}
               style={{
                 height: `${fillPercentage}%`,
-                boxShadow: `0 0 16px ${liquidGradient.glow}`,
+                boxShadow: `0 0 18px ${liquidGradient.glow}`,
               }}
             >
-              {/* Subtle animated meniscus wave surface */}
-              <div className="absolute top-0 left-0 right-0 h-3 -translate-y-1/2 pointer-events-none overflow-hidden">
+              {/* Dual-layered high-speed animated wave meniscus */}
+              <div className="absolute top-0 left-0 right-0 h-3.5 -translate-y-1/2 pointer-events-none overflow-hidden">
+                {/* Secondary undertow wave (faster, counter-moving) */}
                 <svg
                   viewBox="0 0 120 18"
-                  className="w-[200%] h-full motion-safe:animate-[waveMotion_3.5s_linear_infinite] motion-reduce:animate-none opacity-85"
+                  className={`w-[220%] h-full ${
+                    flowSpeed === 'fast'
+                      ? 'motion-safe:animate-[fastWaveRight_0.85s_linear_infinite]'
+                      : 'motion-safe:animate-[fastWaveRight_1.8s_linear_infinite]'
+                  } motion-reduce:animate-none opacity-50 absolute inset-0`}
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M 0 10 Q 15 3, 30 10 T 60 10 T 90 10 T 120 10 L 120 18 L 0 18 Z"
+                    fill={liquidGradient.wave}
+                  />
+                </svg>
+
+                {/* Primary rushing wave crest */}
+                <svg
+                  viewBox="0 0 120 18"
+                  className={`w-[220%] h-full ${
+                    flowSpeed === 'fast'
+                      ? 'motion-safe:animate-[fastWaveLeft_1.1s_linear_infinite]'
+                      : 'motion-safe:animate-[waveMotion_2.5s_linear_infinite]'
+                  } motion-reduce:animate-none opacity-90 absolute inset-0`}
                   preserveAspectRatio="none"
                 >
                   <path
@@ -274,29 +303,67 @@ export function WellWaterLevel({
                   <path
                     d="M 0 8 Q 15 1, 30 8 T 60 8 T 90 8 T 120 8"
                     stroke={liquidGradient.waveGleam}
-                    strokeWidth="1.5"
+                    strokeWidth="1.8"
                     fill="none"
                     opacity="0.95"
                   />
                 </svg>
               </div>
 
-              {/* Liquid Depth Caustic Reflection */}
-              <div className="absolute inset-y-0 left-1/4 w-1/3 bg-gradient-to-r from-white/20 via-white/5 to-transparent pointer-events-none" />
-
-              {/* Rising micro-bubbles (sparingly, gentle) */}
+              {/* High-speed vertical rushing water current streamlines */}
               <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <span
-                  className="absolute bottom-1 left-1/4 w-1 h-1 rounded-full bg-white/50 motion-safe:animate-[bubbleFloat_3.2s_ease-in_infinite] motion-reduce:hidden"
+                <div
+                  className={`absolute top-0 left-1/4 w-[1px] h-12 bg-gradient-to-b from-transparent via-white/40 to-transparent ${
+                    flowSpeed === 'fast'
+                      ? 'motion-safe:animate-[waterCurrentFast_0.75s_linear_infinite]'
+                      : 'motion-safe:animate-[waterCurrentFast_1.6s_linear_infinite]'
+                  }`}
+                  style={{ animationDelay: '0.1s' }}
+                />
+                <div
+                  className={`absolute top-0 right-1/3 w-[1.5px] h-16 bg-gradient-to-b from-transparent via-white/50 to-transparent ${
+                    flowSpeed === 'fast'
+                      ? 'motion-safe:animate-[waterCurrentFast_0.65s_linear_infinite]'
+                      : 'motion-safe:animate-[waterCurrentFast_1.4s_linear_infinite]'
+                  }`}
+                  style={{ animationDelay: '0.35s' }}
+                />
+                <div
+                  className={`absolute top-0 left-1/2 w-[1px] h-10 bg-gradient-to-b from-transparent via-white/35 to-transparent ${
+                    flowSpeed === 'fast'
+                      ? 'motion-safe:animate-[waterCurrentFast_0.85s_linear_infinite]'
+                      : 'motion-safe:animate-[waterCurrentFast_1.8s_linear_infinite]'
+                  }`}
                   style={{ animationDelay: '0.2s' }}
                 />
+              </div>
+
+              {/* Shimmering fluid caustics */}
+              <div
+                className={`absolute inset-y-0 left-1/4 w-1/2 bg-gradient-to-r from-white/20 via-white/10 to-transparent pointer-events-none ${
+                  flowSpeed === 'fast'
+                    ? 'motion-safe:animate-[fluidCausticSpeed_1.2s_ease-in-out_infinite]'
+                    : ''
+                }`}
+              />
+
+              {/* Rapid aeration micro-bubbles moving at speed */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <span
-                  className="absolute bottom-2 right-1/3 w-1.2 h-1.2 rounded-full bg-white/40 motion-safe:animate-[bubbleFloat_4.1s_ease-in_infinite] motion-reduce:hidden"
-                  style={{ animationDelay: '1.5s' }}
+                  className="absolute bottom-1 left-1/4 w-1 h-1 rounded-full bg-white/70 motion-safe:animate-[bubbleSpeedRise_0.9s_ease-in_infinite] motion-reduce:hidden"
+                  style={{ animationDelay: '0.1s' }}
                 />
                 <span
-                  className="absolute bottom-0 left-1/2 w-0.8 h-0.8 rounded-full bg-white/60 motion-safe:animate-[bubbleFloat_2.8s_ease-in_infinite] motion-reduce:hidden"
-                  style={{ animationDelay: '2.4s' }}
+                  className="absolute bottom-2 right-1/3 w-1.2 h-1.2 rounded-full bg-white/60 motion-safe:animate-[bubbleSpeedRise_1.1s_ease-in_infinite] motion-reduce:hidden"
+                  style={{ animationDelay: '0.4s' }}
+                />
+                <span
+                  className="absolute bottom-0 left-1/2 w-0.8 h-0.8 rounded-full bg-white/80 motion-safe:animate-[bubbleSpeedRise_0.75s_ease-in_infinite] motion-reduce:hidden"
+                  style={{ animationDelay: '0.25s' }}
+                />
+                <span
+                  className="absolute bottom-3 right-1/4 w-1.4 h-1.4 rounded-full bg-white/50 motion-safe:animate-[bubbleSpeedRise_1.3s_ease-in_infinite] motion-reduce:hidden"
+                  style={{ animationDelay: '0.6s' }}
                 />
               </div>
             </div>
