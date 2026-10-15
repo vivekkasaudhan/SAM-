@@ -57,6 +57,7 @@ export interface MapFilterParams {
   state?: string;
   district?: string;
   city?: string;
+  search?: string;
 }
 
 interface MapComponentProps {
@@ -180,6 +181,7 @@ export default function MapComponent({
     if (filterParams?.state && filterParams.state.trim()) query.state = filterParams.state.trim();
     if (filterParams?.district && filterParams.district.trim()) query.district = filterParams.district.trim();
     if (filterParams?.city && filterParams.city.trim()) query.city = filterParams.city.trim();
+    if (filterParams?.search && filterParams.search.trim()) query.search = filterParams.search.trim();
 
     wellService
       .getWells(query)
@@ -217,6 +219,7 @@ export default function MapComponent({
     filterParams?.state,
     filterParams?.district,
     filterParams?.city,
+    filterParams?.search,
     onFilteredWellsCountChange,
   ]);
 

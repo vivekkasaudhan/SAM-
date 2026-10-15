@@ -21,6 +21,7 @@ interface MapViewProps {
     state?: string;
     district?: string;
     city?: string;
+    search?: string;
   };
   onFilteredWellsCountChange?: (count: number) => void;
   onResetFilter?: () => void;

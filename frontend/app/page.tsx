@@ -38,6 +38,8 @@ import {
   Activity,
   ArrowUpRight,
   Globe,
+  Search,
+  X,
 } from 'lucide-react';
 
 function DashboardSkeleton() {
@@ -247,6 +249,7 @@ export default function Home() {
     district: '',
     city: '',
   });
+  const [wellSearchQuery, setWellSearchQuery] = useState('');
   const [matchingWellsCount, setMatchingWellsCount] = useState<number | undefined>(undefined);
   const [detailsWellId, setDetailsWellId] = useState<string | null>(null);
   const [wellsList, setWellsList] = useState<any[]>([]);
@@ -255,8 +258,12 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
     setLoadingWells(true);
+    const params: any = { ...geoFilter };
+    if (wellSearchQuery.trim()) {
+      params.search = wellSearchQuery.trim();
+    }
     wellService
-      .getWells(geoFilter)
+      .getWells(params)
       .then((res) => {
         if (isMounted) {
           setWellsList(res || []);
@@ -272,7 +279,7 @@ export default function Home() {
     return () => {
       isMounted = false;
     };
-  }, [geoFilter]);
+  }, [geoFilter, wellSearchQuery]);
 
   const handleResetGeoFilter = () => {
     setGeoFilter({
@@ -281,6 +288,7 @@ export default function Home() {
       district: '',
       city: '',
     });
+    setWellSearchQuery('');
   };
 
   const displayLocation = data?.location
@@ -339,8 +347,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Spatial Search Bar */}
-            <LocationSearch onLocationSelect={selectLocation} />
+            {/* Spatial & Well Search Bar */}
+            <LocationSearch
+              onLocationSelect={selectLocation}
+              onWellSelect={(wellId) => setDetailsWellId(wellId)}
+              searchQuery={wellSearchQuery}
+              onSearchChange={(q) => setWellSearchQuery(q)}
+            />
 
             {/* Geographic Hierarchy Filter (Country -> State -> District -> City) */}
             <GeoHierarchyFilter
@@ -388,7 +401,7 @@ export default function Home() {
               onLocationSelect={selectLocation}
               selectedLat={location?.lat ?? null}
               selectedLon={location?.lon ?? null}
-              filterParams={geoFilter}
+              filterParams={{ ...geoFilter, search: wellSearchQuery }}
               onFilteredWellsCountChange={setMatchingWellsCount}
               onResetFilter={handleResetGeoFilter}
               onViewWellDetails={(id) => setDetailsWellId(id)}
@@ -426,6 +439,43 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Direct Well Search Bar & Active Scope Indicator */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-cyan-600 dark:text-cyan-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={wellSearchQuery}
+                  onChange={(e) => setWellSearchQuery(e.target.value)}
+                  placeholder="Search by well ID (e.g. WELL-8D2930), name, city..."
+                  className="w-full pl-10 pr-10 py-2 rounded-xl border border-border/80 dark:border-navy-750 bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 shadow-2xs transition-all"
+                />
+                {wellSearchQuery && (
+                  <button
+                    onClick={() => setWellSearchQuery('')}
+                    className="absolute right-3 top-2.5 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {wellSearchQuery && (
+                <div className="flex items-center gap-2 self-start sm:self-auto text-xs">
+                  <span className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 font-medium">
+                    Filter: "{wellSearchQuery}"
+                  </span>
+                  <button
+                    onClick={() => setWellSearchQuery('')}
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
             {loadingWells && wellsList.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[1, 2, 3].map((i) => (
@@ -448,8 +498,29 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <div className="p-8 rounded-2xl border border-dashed border-border text-center text-xs text-muted-foreground">
-                No monitoring wells registered in this geographic scope. Adjust filters above to expand view.
+              <div className="p-10 rounded-2xl border border-dashed border-border/80 text-center space-y-3">
+                <div className="inline-flex p-3 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                  <Search className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-foreground">No wells found</h4>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                    {wellSearchQuery
+                      ? `No monitoring wells match "${wellSearchQuery}" within the active geographic filters.`
+                      : 'No monitoring wells registered in this geographic scope. Adjust filters above to expand view.'}
+                  </p>
+                </div>
+                {(wellSearchQuery || geoFilter.state || geoFilter.district || geoFilter.city) && (
+                  <button
+                    onClick={() => {
+                      setWellSearchQuery('');
+                      handleResetGeoFilter();
+                    }}
+                    className="mt-1 px-4 py-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 text-xs font-semibold transition-colors"
+                  >
+                    Reset Search & Filters
+                  </button>
+                )}
               </div>
             )}
           </div>

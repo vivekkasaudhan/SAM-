@@ -311,6 +311,8 @@ def list_wells(
     subadmin_id: Optional[int] = Query(None, description="Filter by subadmin creator ID (Main Admin filter)"),
     created_by: Optional[int] = Query(None, description="Filter by creator ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    search: Optional[str] = Query(None, description="Filter by well name, ID, or location"),
+    q: Optional[str] = Query(None, description="Alias for search"),
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(get_optional_user),
 ):
@@ -329,6 +331,7 @@ def list_wells(
     s_clean = _clean_filter_param(state)
     d_clean = _clean_filter_param(district)
     ci_clean = _clean_filter_param(city)
+    search_term = _clean_filter_param(search if search is not None else q)
 
     # 1. Country filter (e.g. India, USA, IN)
     if c_clean:
@@ -357,6 +360,21 @@ def list_wells(
             (func.lower(func.trim(Well.city)) == ci_lower)
             | ((Well.city.is_(None)) & (func.lower(func.trim(Well.district)) == ci_lower))
         )
+
+    # 5. Search filter (well name, well ID, location, or creator)
+    if search_term:
+        term = f"%{search_term.lower()}%"
+        query = query.outerjoin(User, Well.created_by == User.id)
+        query = query.filter(
+            func.lower(Well.id).like(term)
+            | func.lower(Well.name).like(term)
+            | func.lower(func.coalesce(Well.location_description, "")).like(term)
+            | func.lower(func.coalesce(Well.city, "")).like(term)
+            | func.lower(func.coalesce(Well.district, "")).like(term)
+            | func.lower(func.coalesce(Well.state, "")).like(term)
+            | func.lower(func.coalesce(User.username, "")).like(term)
+            | func.lower(func.coalesce(User.full_name, "")).like(term)
+        ).distinct()
 
     if is_active is not None and isinstance(is_active, bool):
         query = query.filter(Well.is_active == is_active)

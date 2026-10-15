@@ -211,6 +211,8 @@ export const wellService = {
     is_active?: boolean;
     subadmin_id?: number | string;
     created_by?: number | string;
+    search?: string;
+    q?: string;
   }) {
     const response = await api.get('/api/wells', { params: filters });
     return response.data;
