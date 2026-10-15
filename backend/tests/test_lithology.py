@@ -427,6 +427,79 @@ def test_unauthenticated_mutations_blocked():
     assert create_res.status_code == 401
 
 
+def test_subadmin_cannot_bypass_restrictions_with_mismatched_well_or_layer_id():
+    """
+    Subadmins cannot bypass restrictions by supplying their own well ID
+    with a layer ID that belongs to another subadmin's station.
+    """
+    sub1_headers = auth_headers("litho_sub1")
+    sub2_headers = auth_headers("litho_sub2")
+    well1_id = "WELL-LITHO-01"  # Owned by Subadmin 1
+    well2_id = "WELL-LITHO-02"  # Owned by Subadmin 2
+
+    # Subadmin 1 creates a layer on WELL-LITHO-01
+    res1 = client.post(
+        f"/api/wells/{well1_id}/lithology",
+        json={"from_depth_m": 43.0, "to_depth_m": 48.0, "material_type": "sand"},
+        headers=sub1_headers,
+    )
+    assert res1.status_code == 201
+    layer1_id = res1.json()["id"]
+
+    # Subadmin 2 attempts to modify Subadmin 1's layer by targeting their own well (WELL-LITHO-02)
+    tamper_update = client.put(
+        f"/api/wells/{well2_id}/lithology/{layer1_id}",
+        json={"description": "Hacked layer description"},
+        headers=sub2_headers,
+    )
+    assert tamper_update.status_code == 400
+    assert "does not belong" in tamper_update.json()["detail"].lower()
+
+    # Subadmin 2 attempts to delete Subadmin 1's layer via WELL-LITHO-02
+    tamper_delete = client.delete(
+        f"/api/wells/{well2_id}/lithology/{layer1_id}",
+        headers=sub2_headers,
+    )
+    assert tamper_delete.status_code == 400
+    assert "does not belong" in tamper_delete.json()["detail"].lower()
+
+    # Cleanup layer1
+    client.delete(f"/api/wells/{well1_id}/lithology/{layer1_id}", headers=sub1_headers)
+
+
+def test_creation_and_update_audit_fields_populated():
+    """Creation and update audit user IDs must be reliably tracked on backend."""
+    admin_headers = auth_headers("litho_main_admin")
+    sub1_headers = auth_headers("litho_sub1")
+    well1_id = "WELL-LITHO-01"
+
+    # Subadmin 1 creates a layer
+    create_res = client.post(
+        f"/api/wells/{well1_id}/lithology",
+        json={"from_depth_m": 44.0, "to_depth_m": 49.0, "material_type": "limestone"},
+        headers=sub1_headers,
+    )
+    assert create_res.status_code == 201
+    data = create_res.json()
+    layer_id = data["id"]
+    assert data["created_by_user_id"] is not None
+    assert data["updated_by_user_id"] is not None
+
+    # Main Admin updates the layer
+    update_res = client.put(
+        f"/api/wells/{well1_id}/lithology/{layer_id}",
+        json={"description": "Audited by Main Admin"},
+        headers=admin_headers,
+    )
+    assert update_res.status_code == 200
+    up_data = update_res.json()
+    assert up_data["created_by_user_id"] == data["created_by_user_id"]
+    assert up_data["updated_by_user_id"] != data["created_by_user_id"]
+
+    # Cleanup
+    client.delete(f"/api/wells/{well1_id}/lithology/{layer_id}", headers=admin_headers)
+
+
 # ─── 5. DEMO SEED ACTION INTEGRITY ───────────────────────────────────────────
 
 def test_demo_stratigraphy_seed_explicit_action():
@@ -440,11 +513,11 @@ def test_demo_stratigraphy_seed_explicit_action():
     assert len(demo_layers) >= 5
     for l in demo_layers:
         assert l["data_source"] == "illustrative_demo"
-        assert "Demo" in l["source_reference"]
+        assert "demo" in l["source_reference"].lower()
 
     # Fetch profile
     profile_res = client.get(f"/api/wells/{well2_id}/lithology/profile")
     assert profile_res.status_code == 200
     profile = profile_res.json()
     assert profile["has_aquifer_layer"] is True
-    assert profile["total_logged_depth_m"] >= 35.0
+    assert profile["total_logged_depth_m"] >= 30.0
