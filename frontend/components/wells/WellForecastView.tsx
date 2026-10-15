@@ -78,13 +78,8 @@ export function WellForecastView({
     }
   }, [wellId]);
 
-  // Fetch historical context data when user toggles 1y / 2y / 3y
+  // Fetch historical context data when user toggles recent / 1y / 2y / 3y
   useEffect(() => {
-    if (historyContext === 'recent') {
-      setContextReadings(historicalReadings);
-      return;
-    }
-
     let isMounted = true;
     setContextLoading(true);
     wellService
@@ -97,7 +92,7 @@ export function WellForecastView({
       .catch((err) => {
         console.error(`Failed to load ${historyContext} history for forecast context:`, err);
         if (isMounted) {
-          setContextReadings(historicalReadings);
+          setContextReadings(historicalReadings || []);
         }
       })
       .finally(() => {

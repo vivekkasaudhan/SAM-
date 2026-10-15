@@ -808,43 +808,22 @@ def get_well_readings(
         .all()
     )
 
-    # Auto-backfill past 24-hr deterministic sequence ONLY if fewer than 12 readings exist and well is SIMULATED
+    # For eligible simulated wells with fewer than 12 readings, safely backfill multi-year history
     if (
         len(readings) < 12
-        and len(readings) > 0
         and (getattr(w, "monitoring_type", None) or "SIMULATED").upper() == "SIMULATED"
         and not any(getattr(s, "api_key_hash", None) for s in w.sensors)
     ):
-        import math
-        from datetime import timedelta, timezone
-        baseline_r = readings[0]
-        sensor_id = baseline_r.sensor_id
-        now = datetime.now(timezone.utc)
-        for h in range(23, 0, -1):
-            t = now - timedelta(hours=h)
-            osc = math.sin(2 * math.pi * h / 24)
-            r = Reading(
-                well_id=well_id,
-                sensor_id=sensor_id,
-                water_level_m=round(max(0.5, baseline_r.water_level_m - 0.22 * osc), 2),
-                ph=round(max(5.5, min(9.5, baseline_r.ph + 0.12 * osc)), 2),
-                tds_ppm=round(max(50.0, baseline_r.tds_ppm + 14.0 * osc), 1),
-                turbidity_ntu=round(max(0.5, baseline_r.turbidity_ntu + 0.3 * osc), 1),
-                dissolved_oxygen_mg_l=round(max(1.0, baseline_r.dissolved_oxygen_mg_l + 0.35 * osc), 1),
-                temperature_c=round(baseline_r.temperature_c - 1.2 * osc, 1),
-                status=baseline_r.status,
-                source=baseline_r.source,
-                timestamp=t,
+        from app.services.historical_simulation_service import HistoricalSimulationService
+        if HistoricalSimulationService.is_well_eligible_for_backfill(w, db):
+            HistoricalSimulationService.backfill_well_history(well_id, span_days=1095, db=db)
+            readings = (
+                db.query(Reading)
+                .filter(Reading.well_id == well_id)
+                .order_by(Reading.timestamp.desc())
+                .limit(limit)
+                .all()
             )
-            db.add(r)
-        db.commit()
-        readings = (
-            db.query(Reading)
-            .filter(Reading.well_id == well_id)
-            .order_by(Reading.timestamp.desc())
-            .limit(limit)
-            .all()
-        )
 
     # Sort ascending so charts plot from oldest -> newest
     sorted_readings = sorted(readings, key=lambda r: r.timestamp)

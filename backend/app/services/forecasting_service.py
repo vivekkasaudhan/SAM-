@@ -351,12 +351,11 @@ class GroundwaterForecastingService:
             if not well:
                 raise ValueError(f"Well station '{well_id}' was not found in the database.")
 
-            # Read historical readings (latest 250 sorted chronologically)
+            # Read all historical readings for this selected well sorted chronologically
             raw_readings = (
                 session.query(Reading)
                 .filter(Reading.well_id == well_id)
-                .order_by(Reading.timestamp.desc())
-                .limit(250)
+                .order_by(Reading.timestamp.asc())
                 .all()
             )
 
@@ -367,21 +366,21 @@ class GroundwaterForecastingService:
 
             if well.monitoring_type == "PHYSICAL_SENSOR" and len(live_readings) >= 5:
                 # Use pure physical sensor telemetry
-                readings = list(reversed(live_readings))
+                readings = live_readings
                 is_demo = False
                 forecast_type = "PHYSICAL_TELEMETRY"
                 data_source_label = "Installed Physical IoT Sensors"
                 disclaimer = "Empirical forecast based on physically installed sensor telemetry and numerical hydrological models."
             elif live_readings and len(live_readings) >= len(simulated_readings):
                 # Well has predominant live readings
-                readings = list(reversed(live_readings))
+                readings = live_readings
                 is_demo = False
                 forecast_type = "PHYSICAL_TELEMETRY"
                 data_source_label = "Installed Physical IoT Sensors"
                 disclaimer = "Empirical forecast based on physically installed sensor telemetry and numerical hydrological models."
             else:
                 # Pure simulated demo dataset
-                readings = list(reversed(simulated_readings if simulated_readings else raw_readings))
+                readings = simulated_readings if simulated_readings else raw_readings
                 is_demo = True
                 forecast_type = "DEMO_SIMULATED"
                 data_source_label = "AquaSense Hydrological Simulation Engine"
@@ -409,6 +408,7 @@ class GroundwaterForecastingService:
                     "data_freshness": {
                         "total_readings": len(readings),
                         "data_span_hours": round(sufficiency["span_hours"], 1),
+                        "data_span_days": round(sufficiency["span_hours"] / 24.0, 1),
                         "latest_observation": readings[-1].timestamp.isoformat() if readings else None,
                         "earliest_observation": readings[0].timestamp.isoformat() if readings else None,
                     },
@@ -462,6 +462,7 @@ class GroundwaterForecastingService:
                 "model_version": GroundwaterBaselineModel.MODEL_VERSION,
                 "data_freshness": {
                     "total_readings": len(readings),
+                    "observations_count": len(readings),
                     "data_span_hours": round(sufficiency["span_hours"], 1),
                     "data_span_days": round(sufficiency["span_hours"] / 24.0, 2),
                     "latest_observation": readings[-1].timestamp.isoformat(),
@@ -521,15 +522,21 @@ class GroundwaterForecastingService:
                 "reason": f"Station has only {len(readings)} telemetry readings. A minimum of 5 historical observations is required.",
             }
 
-        span_seconds = (readings[-1].timestamp - readings[0].timestamp).total_seconds()
+        t_start = readings[0].timestamp
+        t_end = readings[-1].timestamp
+        span_seconds = max(0.0, (t_end - t_start).total_seconds())
         span_hours = span_seconds / 3600.0
 
-        if span_hours < 24.0:
+        # In discrete hourly sampling, 24 hourly readings across a full day cycle span 23.0 elapsed hours (e.g. 00:00 to 23:00).
+        # A full diurnal cycle is captured if span_hours >= 24.0 or (len(readings) >= 24 and span_hours >= 22.8).
+        has_diurnal_coverage = span_hours >= 24.0 or (len(readings) >= 24 and span_hours >= 22.8)
+
+        if not has_diurnal_coverage:
             return {
                 "is_sufficient": False,
                 "span_hours": span_hours,
                 "max_supported_horizon_days": 0,
-                "reason": f"Observation history spans only {span_hours:.1f} hours. At least 24.0 hours of telemetry is required to capture diurnal and baseline dynamics.",
+                "reason": f"Observation history spans only {span_hours:.1f} hours ({len(readings)} readings). At least 24.0 hours of telemetry (or a full 24-point diurnal cycle) is required to capture diurnal and baseline dynamics.",
             }
 
         # 15-day horizon requires at least 48 hours of observations

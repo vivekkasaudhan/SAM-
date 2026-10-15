@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta, timezone
+from math import sin as math_sin
 from fastapi.testclient import TestClient
 from app.main import app
 from app.models.database import SessionLocal, Well, Reading, LithologyLayer, WaterLevelForecast
@@ -148,6 +149,70 @@ def setup_test_wells():
             timestamp=t,
         ))
 
+    # 4. Well with exactly 24 hourly readings (spanning 23 hours delta)
+    well_24 = Well(
+        id="TEST-WELL-24-HOURLY",
+        name="Test Well With Exactly 24 Hourly Readings",
+        latitude=23.83,
+        longitude=86.46,
+        country="India",
+        state="Jharkhand",
+        district="Dhanbad",
+        city="Dhanbad",
+        warning_level_m=7.0,
+        danger_level_m=8.5,
+        total_depth_m=50.0,
+        monitoring_type="SIMULATED",
+        is_active=True,
+    )
+    db.merge(well_24)
+    for h in range(24):
+        t = now - timedelta(hours=23 - h)
+        db.add(Reading(
+            well_id="TEST-WELL-24-HOURLY",
+            water_level_m=round(5.0 + 0.1 * math_sin(2 * 3.14159 * h / 24.0), 2),
+            ph=7.0,
+            tds_ppm=260.0,
+            turbidity_ntu=2.5,
+            dissolved_oxygen_mg_l=6.9,
+            temperature_c=24.0,
+            status="SIMULATED",
+            source="SYNTHETIC",
+            timestamp=t,
+        ))
+
+    # 5. Well with 500 daily readings to verify no 250 truncation
+    well_multi = Well(
+        id="TEST-WELL-MULTI-YEAR",
+        name="Test Well With 500 Historical Readings",
+        latitude=23.84,
+        longitude=86.47,
+        country="India",
+        state="Jharkhand",
+        district="Dhanbad",
+        city="Dhanbad",
+        warning_level_m=7.0,
+        danger_level_m=8.5,
+        total_depth_m=50.0,
+        monitoring_type="SIMULATED",
+        is_active=True,
+    )
+    db.merge(well_multi)
+    for d in range(500):
+        t = now - timedelta(days=499 - d)
+        db.add(Reading(
+            well_id="TEST-WELL-MULTI-YEAR",
+            water_level_m=round(5.5 + 0.5 * math_sin(2 * 3.14159 * d / 365.25), 2),
+            ph=7.2,
+            tds_ppm=290.0,
+            turbidity_ntu=3.0,
+            dissolved_oxygen_mg_l=6.5,
+            temperature_c=25.0,
+            status="SIMULATED",
+            source="SYNTHETIC",
+            timestamp=t,
+        ))
+
     db.commit()
     db.close()
 
@@ -155,7 +220,7 @@ def setup_test_wells():
 
     # Cleanup test wells
     db = SessionLocal()
-    for wid in ["TEST-WELL-SUFFICIENT", "TEST-WELL-SPARSE", "TEST-WELL-GAPS"]:
+    for wid in ["TEST-WELL-SUFFICIENT", "TEST-WELL-SPARSE", "TEST-WELL-GAPS", "TEST-WELL-24-HOURLY", "TEST-WELL-MULTI-YEAR"]:
         db.query(Reading).filter(Reading.well_id == wid).delete()
         db.query(LithologyLayer).filter(LithologyLayer.well_id == wid).delete()
         db.query(WaterLevelForecast).filter(WaterLevelForecast.well_id == wid).delete()
@@ -279,3 +344,26 @@ def test_forecast_persistence_and_history(setup_test_wells):
     hist = resp_hist.json()
     assert len(hist) >= 1
     assert hist[0]["id"] == forecast_id
+
+
+def test_forecast_24_hourly_readings_qualification(setup_test_wells):
+    """Test 7: Exactly 24 hourly readings spanning 23 hours delta qualifies for 7-day forecast."""
+    resp = client.get("/api/wells/TEST-WELL-24-HOURLY/forecast?horizon=7")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "SUCCESS", f"Expected SUCCESS but got {data.get('reason')}"
+    assert data["horizon_days"] == 7
+    assert len(data["predictions"]) == 7
+    assert data["data_freshness"]["observations_count"] == 24
+    assert data["data_freshness"]["data_span_days"] >= 0.95
+
+
+def test_forecast_multi_year_history_no_250_cap(setup_test_wells):
+    """Test 8: Wells with >250 historical readings are not truncated to 250 samples."""
+    resp = client.get("/api/wells/TEST-WELL-MULTI-YEAR/forecast?horizon=7")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "SUCCESS"
+    assert data["data_freshness"]["observations_count"] == 500
+    assert data["data_freshness"]["data_span_days"] >= 498.0
+
