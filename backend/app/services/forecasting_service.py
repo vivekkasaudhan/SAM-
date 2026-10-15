@@ -351,36 +351,41 @@ class GroundwaterForecastingService:
             if not well:
                 raise ValueError(f"Well station '{well_id}' was not found in the database.")
 
-            # Read historical readings (latest 200 sorted chronologically)
+            # Read historical readings (latest 250 sorted chronologically)
             raw_readings = (
                 session.query(Reading)
                 .filter(Reading.well_id == well_id)
                 .order_by(Reading.timestamp.desc())
-                .limit(200)
-                .all()
-            )
-            readings = list(reversed(raw_readings))
-
-            # Lithology stratigraphy
-            lithology_layers = (
-                session.query(LithologyLayer)
-                .filter(LithologyLayer.well_id == well_id)
-                .order_by(LithologyLayer.from_depth_m.asc())
+                .limit(250)
                 .all()
             )
 
-            # Determine provenance
-            is_demo = (
-                well.monitoring_type != "PHYSICAL_SENSOR"
-                or any(r.status == "SIMULATED" for r in readings)
-                or not readings
-            )
-            forecast_type = "DEMO_SIMULATED" if is_demo else "PHYSICAL_TELEMETRY"
-            disclaimer = (
-                "Forecast derived from simulated/synthetic telemetry. For demonstration and workflow validation purposes only."
-                if is_demo
-                else "Empirical forecast based on physically installed sensor telemetry and numerical hydrological models."
-            )
+            # Rule: DO NOT silently combine real and simulated data into one training series!
+            # Separate physical live telemetry from simulated demo telemetry
+            live_readings = [r for r in raw_readings if getattr(r.status, "value", str(r.status)) == "LIVE"]
+            simulated_readings = [r for r in raw_readings if getattr(r.status, "value", str(r.status)) == "SIMULATED"]
+
+            if well.monitoring_type == "PHYSICAL_SENSOR" and len(live_readings) >= 5:
+                # Use pure physical sensor telemetry
+                readings = list(reversed(live_readings))
+                is_demo = False
+                forecast_type = "PHYSICAL_TELEMETRY"
+                data_source_label = "Installed Physical IoT Sensors"
+                disclaimer = "Empirical forecast based on physically installed sensor telemetry and numerical hydrological models."
+            elif live_readings and len(live_readings) >= len(simulated_readings):
+                # Well has predominant live readings
+                readings = list(reversed(live_readings))
+                is_demo = False
+                forecast_type = "PHYSICAL_TELEMETRY"
+                data_source_label = "Installed Physical IoT Sensors"
+                disclaimer = "Empirical forecast based on physically installed sensor telemetry and numerical hydrological models."
+            else:
+                # Pure simulated demo dataset
+                readings = list(reversed(simulated_readings if simulated_readings else raw_readings))
+                is_demo = True
+                forecast_type = "DEMO_SIMULATED"
+                data_source_label = "AquaSense Hydrological Simulation Engine"
+                disclaimer = "DEMO FORECAST — BASED ON SIMULATED DATA. For demonstration and workflow validation purposes only. Does not establish real-world hydrogeological forecasting accuracy."
 
             # 1. Check Data Sufficiency
             sufficiency = self._evaluate_data_sufficiency(readings, horizon_days)
@@ -394,6 +399,8 @@ class GroundwaterForecastingService:
                     "reason": sufficiency["reason"],
                     "is_demo": is_demo,
                     "forecast_type": forecast_type,
+                    "forecast_label": "DEMO FORECAST — BASED ON SIMULATED DATA" if is_demo else "PHYSICAL SENSOR TELEMETRY FORECAST",
+                    "data_source_label": data_source_label,
                     "disclaimer": disclaimer,
                     "horizon_days": horizon_days,
                     "generated_at": now_iso,
@@ -418,6 +425,14 @@ class GroundwaterForecastingService:
             # 2. Fetch Weather / Precipitation Forecast
             rainfall_daily, rain_source = self._fetch_precipitation_forecast(well.latitude, well.longitude, horizon_days)
 
+            # Query Lithology stratigraphy
+            lithology_layers = (
+                session.query(LithologyLayer)
+                .filter(LithologyLayer.well_id == well_id)
+                .order_by(LithologyLayer.from_depth_m.asc())
+                .all()
+            )
+
             # 3. Fit Baseline Model
             model = GroundwaterBaselineModel()
             model.fit(readings, lithology_layers)
@@ -438,6 +453,8 @@ class GroundwaterForecastingService:
                 "status": "SUCCESS",
                 "is_demo": is_demo,
                 "forecast_type": forecast_type,
+                "forecast_label": "DEMO FORECAST — BASED ON SIMULATED DATA" if is_demo else "PHYSICAL SENSOR TELEMETRY FORECAST",
+                "data_source_label": data_source_label,
                 "disclaimer": disclaimer,
                 "horizon_days": effective_horizon,
                 "generated_at": now_iso,

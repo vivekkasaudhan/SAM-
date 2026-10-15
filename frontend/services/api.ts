@@ -111,6 +111,11 @@ export interface HistoricalAnalysisResponse {
   has_missing_data: boolean;
   missing_periods: MissingPeriod[];
   data_source_summary: Record<string, number>;
+  is_demo_history?: boolean;
+  simulated_percentage?: number;
+  simulated_records_count?: number;
+  measured_records_count?: number;
+  provenance_notice?: string;
   earliest_recorded_timestamp?: string | null;
   latest_recorded_timestamp?: string | null;
   readings: Array<{
@@ -171,6 +176,8 @@ export interface GroundwaterForecastResponse {
   is_demo: boolean;
   forecast_type: 'DEMO_SIMULATED' | 'PHYSICAL_TELEMETRY';
   disclaimer: string;
+  forecast_label?: string;
+  data_source_label?: string;
   horizon_days: number;
   generated_at: string;
   model_name: string;
@@ -264,6 +271,12 @@ export const wellService = {
   },
   async deleteWell(id: string) {
     const response = await api.delete(`/api/wells/${id}`);
+    return response.data;
+  },
+  async backfillSimulation(wellId?: string, years: number = 3) {
+    const response = await api.post('/api/scheduler/backfill', null, {
+      params: { well_id: wellId, years },
+    });
     return response.data;
   },
 };

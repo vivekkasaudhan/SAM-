@@ -23,6 +23,7 @@ import {
   LineChart as LineChartIcon,
   User,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -769,6 +770,11 @@ export function WellDetailsModal({
                     {/* Metadata & Provenance Tags */}
                     {historyAnalysis && (
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {historyAnalysis.is_demo_history && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold uppercase tracking-wider text-[10px]">
+                            DEMO / SIMULATED HISTORY
+                          </span>
+                        )}
                         <span className="px-2 py-0.5 rounded-md bg-muted/60 dark:bg-navy-900 border border-border/60 text-foreground font-mono">
                           {historyAnalysis.total_records} records
                         </span>
@@ -820,6 +826,29 @@ export function WellDetailsModal({
                       >
                         Apply Filter
                       </button>
+                    </div>
+                  )}
+
+                  {/* Prominent Demo History Banner */}
+                  {historyAnalysis?.is_demo_history && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 font-bold">
+                          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span className="uppercase tracking-wider font-extrabold text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                            DEMO / SIMULATED HISTORY
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {historyAnalysis.simulated_percentage != null ? `${historyAnalysis.simulated_percentage.toFixed(0)}% Simulated Telemetry` : 'Simulated Series'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {historyAnalysis.simulated_records_count ?? historyAnalysis.total_records} simulated of {historyAnalysis.total_records} records
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
+                        {historyAnalysis.provenance_notice || "This station is displaying simulated historical groundwater levels generated for demonstration, modeling, and forecasting evaluation. These records do not represent physically measured hydrological history."}
+                      </p>
                     </div>
                   )}
 

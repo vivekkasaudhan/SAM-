@@ -98,6 +98,9 @@ class WellHistoryService:
                 range_type, start_date, end_date
             )
 
+            # Ensure limit covers full 3-year range for daily aggregations (1095+ days)
+            effective_limit = max(limit, 3500) if (range_type in ("3y", "3years", "last_3_years") or (resolved_end - resolved_start).days >= 700) else limit
+
             # Determine final aggregation mode
             agg_mode = auto_agg if (not aggregate or aggregate == "auto") else aggregate.lower()
 
@@ -184,7 +187,7 @@ class WellHistoryService:
                         "well_id": well_id,
                         "start_ts": resolved_start,
                         "end_ts": resolved_end,
-                        "limit": limit,
+                        "limit": effective_limit,
                     },
                 ).fetchall()
 
@@ -241,7 +244,7 @@ class WellHistoryService:
                         "well_id": well_id,
                         "start_ts": resolved_start,
                         "end_ts": resolved_end,
-                        "limit": limit,
+                        "limit": effective_limit,
                     },
                 ).fetchall()
 
@@ -278,7 +281,7 @@ class WellHistoryService:
                         Reading.timestamp <= resolved_end,
                     )
                     .order_by(Reading.timestamp.asc())
-                    .limit(limit)
+                    .limit(effective_limit)
                     .all()
                 )
 
@@ -326,6 +329,22 @@ class WellHistoryService:
                     except Exception:
                         pass
 
+            simulated_samples = source_breakdown.get("SIMULATED", 0)
+            live_samples = source_breakdown.get("LIVE", 0)
+            total_samples = sum(source_breakdown.values()) or len(readings_out) or 1
+            simulated_pct = round((simulated_samples / total_samples) * 100.0, 1)
+
+            is_demo_history = (
+                (getattr(well, "monitoring_type", None) or "SIMULATED").upper() == "SIMULATED"
+                or simulated_pct >= 50.0
+            )
+
+            provenance_notice = (
+                "DEMO / SIMULATED HISTORY: Records across this historical period were synthesized by the AquaSense Hydrological Simulation Engine for demo and workflow testing. Not collected by physical sensors."
+                if is_demo_history
+                else "EMPIRICAL SENSOR HISTORY: Verified records recorded by installed physical telemetry."
+            )
+
             return {
                 "well_id": well.id,
                 "well_name": well.name,
@@ -337,6 +356,11 @@ class WellHistoryService:
                 "has_missing_data": has_missing_data,
                 "missing_periods": missing_periods,
                 "data_source_summary": source_breakdown,
+                "is_demo_history": is_demo_history,
+                "simulated_percentage": simulated_pct,
+                "simulated_records_count": simulated_samples,
+                "measured_records_count": live_samples,
+                "provenance_notice": provenance_notice,
                 "earliest_recorded_timestamp": earliest_db_ts.isoformat() if earliest_db_ts else None,
                 "latest_recorded_timestamp": latest_db_ts.isoformat() if latest_db_ts else None,
                 "readings": readings_out,

@@ -132,6 +132,8 @@ class GroundwaterForecastResponse(BaseModel):
     is_demo: bool
     forecast_type: str
     disclaimer: str
+    forecast_label: Optional[str] = None
+    data_source_label: Optional[str] = None
     horizon_days: int
     generated_at: str
     model_name: str

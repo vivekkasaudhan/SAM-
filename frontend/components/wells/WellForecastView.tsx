@@ -221,6 +221,29 @@ export function WellForecastView({
     <div className="space-y-6">
       {/* ── Header: Model Status & Provenance Banner ───────────────────── */}
       <div className="p-6 rounded-3xl bg-muted/20 dark:bg-navy-950/30 border border-border/60 dark:border-navy-800 space-y-4">
+        {/* Prominent Demo Mode Banner if simulated */}
+        {isDemo && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500 shrink-0" />
+              <h4 className="font-extrabold text-sm tracking-wide text-foreground">
+                {forecast?.forecast_label || 'DEMO FORECAST — BASED ON SIMULATED DATA'}
+              </h4>
+            </div>
+            <div className="text-xs text-muted-foreground leading-relaxed pl-7 space-y-1">
+              <p>
+                <strong className="text-foreground">Data Source:</strong> {forecast?.data_source_label || 'Synthetic Simulation Engine (3-Year Demo History)'}
+              </p>
+              <p>
+                <strong className="text-foreground">Model Generated:</strong> {formatTimestamp(forecast?.generated_at)}
+              </p>
+              <p>
+                This groundwater forecast is generated using synthetic historical data for platform demonstration and hydrological model verification. It must not be mistaken for real measured aquifer forecasting.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -232,7 +255,7 @@ export function WellForecastView({
                 }`}
               >
                 <Sparkles className="h-3 w-3" />
-                {isDemo ? 'Demo / Synthetic Telemetry Forecast' : 'Physical Sensor Telemetry Forecast'}
+                {isDemo ? (forecast?.forecast_label || 'DEMO FORECAST — BASED ON SIMULATED DATA') : 'PHYSICAL SENSOR TELEMETRY FORECAST'}
               </span>
 
               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-card dark:bg-navy-900 border border-border/60 text-muted-foreground">
