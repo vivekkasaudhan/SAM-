@@ -104,6 +104,13 @@ class WellHistoryService:
             # Determine final aggregation mode
             agg_mode = auto_agg if (not aggregate or aggregate == "auto") else aggregate.lower()
 
+            # If eligible simulated well has fewer than 12 readings, safely backfill multi-year history
+            existing_count = db.query(Reading).filter(Reading.well_id == well_id).count()
+            if existing_count < 12 and (getattr(well, "monitoring_type", None) or "SIMULATED").upper() == "SIMULATED":
+                from app.services.historical_simulation_service import HistoricalSimulationService
+                if HistoricalSimulationService.is_well_eligible_for_backfill(well, db):
+                    HistoricalSimulationService.backfill_well_history(well_id, span_days=1095, db=db)
+
             # Inspect well overall recording bounds
             first_last = (
                 db.query(func.min(Reading.timestamp), func.max(Reading.timestamp))
