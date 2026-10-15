@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 210 24% 98%;
+    --foreground: 222.2 47% 11.2%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47% 11.2%;
+    --primary: 199 89% 42%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 32% 95%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 30% 95%;
+    --muted-foreground: 215.4 16.3% 44%;
+    --accent: 199 80% 95%;
+    --accent-foreground: 199 90% 25%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 28% 90%;
+    --input: 214.3 28% 90%;
+    --ring: 199 89% 42%;
+    --radius: 0.75rem;
+  }
+ 
+  .dark {
+    --background: 222 47% 6.5%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 9.5%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 191 92% 50%;
+    --primary-foreground: 222 47% 8%;
+    --secondary: 220 30% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 30% 13.5%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 191 75% 15%;
+    --accent-foreground: 191 90% 65%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 28% 16%;
+    --input: 220 28% 16%;
+    --ring: 191 92% 50%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground selection:bg-cyan-500 selection:text-white antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-card/85 backdrop-blur-md border border-border/80 shadow-enterprise dark:shadow-enterprise-dark;
+  }
+  .glass-header {
+    @apply bg-background/85 backdrop-blur-md border-b border-border/80 supports-[backdrop-filter]:bg-background/75;
+  }
+  .enterprise-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border;
+  }
+}
+
+@keyframes waveMotion {
+  0% {
+    transform: translateX(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) scaleY(1.08);
+  }
+  100% {
+    transform: translateX(-50%) scaleY(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

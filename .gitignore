@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+venv/
+backend/venv/
+
+# Build outputs
+.next/
+frontend/.next/
+out/
+build/
+dist/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment and backups
+*.pre_lithology.bak
+*.bak
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
