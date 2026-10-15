@@ -462,6 +462,32 @@ export default function MapComponent({
                                 Read-only
                               </span>
                             )}
+                          {/* Lithology Status Chip */}
+                          {st.lithology_status === 'RECORDED' ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-500/10 px-1.5 py-0.5 rounded border border-teal-500/30"
+                              title={`Geology Recorded: ${st.total_logged_depth_m || 0}m logged (${st.lithology_count || 0} strata)`}
+                            >
+                              <Layers className="h-2.5 w-2.5 text-teal-500" />
+                              <span>Geology Logged</span>
+                            </span>
+                          ) : st.lithology_status === 'PARTIAL' ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30"
+                              title="Partially logged lithology"
+                            >
+                              <Layers className="h-2.5 w-2.5 text-amber-500" />
+                              <span>Partially Logged</span>
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9px] font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40"
+                              title="No subsurface lithology recorded"
+                            >
+                              <Layers className="h-2.5 w-2.5 opacity-50" />
+                              <span>No Lithology</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span

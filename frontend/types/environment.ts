@@ -161,6 +161,10 @@ export interface MonitoringStation {
   state?: string;
   district?: string;
   city?: string;
+  total_depth_m?: number | null;
+  lithology_count?: number;
+  lithology_status?: 'RECORDED' | 'PARTIAL' | 'NONE' | string;
+  total_logged_depth_m?: number;
   created_by?: number | null;
   creator?: {
     id: number;
@@ -206,6 +210,10 @@ export interface WellRecord {
   location_description?: string;
   warning_level_m: number;
   danger_level_m: number;
+  total_depth_m?: number | null;
+  lithology_count?: number;
+  lithology_status?: 'RECORDED' | 'PARTIAL' | 'NONE' | string;
+  total_logged_depth_m?: number;
   is_active: boolean;
   created_at: string;
   created_by?: number | null;

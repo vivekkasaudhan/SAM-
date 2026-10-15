@@ -32,6 +32,10 @@ export interface WellData {
   location_description?: string | null;
   warning_level_m?: number;
   danger_level_m?: number;
+  total_depth_m?: number | null;
+  lithology_count?: number;
+  lithology_status?: 'RECORDED' | 'PARTIAL' | 'NONE' | string;
+  total_logged_depth_m?: number;
   is_active?: boolean;
   created_by?: number | null;
   creator?: {
@@ -150,6 +154,33 @@ export function WellCard({
               {isReadOnlyForUser && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-500/10 px-2 py-0.5 rounded-full border border-slate-500/30">
                   Read-only
+                </span>
+              )}
+
+              {/* Lithology Stratigraphy Indicator */}
+              {well.lithology_status === 'RECORDED' ? (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/25"
+                  title={`Geology Recorded: ${well.total_logged_depth_m || 0}m depth logged (${well.lithology_count || 0} strata)`}
+                >
+                  <Layers className="h-2.5 w-2.5 text-teal-500" />
+                  <span>Geology Logged</span>
+                </span>
+              ) : well.lithology_status === 'PARTIAL' ? (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/25"
+                  title={`Partially Logged: ${well.total_logged_depth_m || 0}m depth logged`}
+                >
+                  <Layers className="h-2.5 w-2.5 text-amber-500" />
+                  <span>Partially Logged</span>
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/75 bg-muted/40 px-2 py-0.5 rounded-full border border-border/40"
+                  title="No subsurface lithology records logged for this borehole"
+                >
+                  <Layers className="h-2.5 w-2.5 opacity-50" />
+                  <span>No Lithology</span>
                 </span>
               )}
             </div>

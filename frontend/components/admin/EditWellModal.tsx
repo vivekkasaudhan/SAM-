@@ -41,6 +41,7 @@ export function EditWellModal({
   const [lon, setLon] = useState<number>(0);
   const [warningLevel, setWarningLevel] = useState<number>(7.5);
   const [dangerLevel, setDangerLevel] = useState<number>(8.5);
+  const [totalDepth, setTotalDepth] = useState<string>('');
   const [isActive, setIsActive] = useState<boolean>(true);
 
   const [saving, setSaving] = useState(false);
@@ -58,6 +59,7 @@ export function EditWellModal({
       setLon(well.longitude || 0);
       setWarningLevel(well.warning_level_m || 7.5);
       setDangerLevel(well.danger_level_m || 8.5);
+      setTotalDepth(well.total_depth_m != null ? String(well.total_depth_m) : '');
       setIsActive(well.is_active ?? true);
       setError(null);
     }
@@ -102,6 +104,7 @@ export function EditWellModal({
         longitude: lon,
         warning_level_m: Number(warningLevel),
         danger_level_m: Number(dangerLevel),
+        total_depth_m: totalDepth ? parseFloat(totalDepth) : null,
         is_active: isActive,
       });
       onWellUpdated(updated);
@@ -276,7 +279,7 @@ export function EditWellModal({
               <span>Safety Thresholds & Activation</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-amber-600 dark:text-amber-400">
                   Warning Level (m)
@@ -301,6 +304,20 @@ export function EditWellModal({
                   value={dangerLevel}
                   onChange={(e) => setDangerLevel(parseFloat(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-xl border bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-2xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                  Total Well Depth (m)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={totalDepth}
+                  onChange={(e) => setTotalDepth(e.target.value)}
+                  placeholder="e.g. 30.0"
+                  className="w-full px-3.5 py-2.5 rounded-xl border bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500 shadow-2xs"
                 />
               </div>
             </div>

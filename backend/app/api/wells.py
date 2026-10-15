@@ -101,6 +101,10 @@ class WellDetailOut(BaseModel):
     location_description: Optional[str] = None
     warning_level_m: float
     danger_level_m: float
+    total_depth_m: Optional[float] = None
+    lithology_count: int = 0
+    lithology_status: str = "NONE"
+    total_logged_depth_m: float = 0.0
     is_active: bool
     created_at: datetime
     created_by: Optional[int] = None
@@ -141,6 +145,7 @@ class CreateWellRequest(BaseModel):
     location_description: Optional[str] = Field(None, max_length=255)
     warning_level_m: Optional[float] = Field(7.5, ge=0.0, le=100.0)
     danger_level_m: Optional[float] = Field(8.5, ge=0.0, le=100.0)
+    total_depth_m: Optional[float] = Field(None, ge=0.0, le=5000.0, description="Total drilled/borewell depth in metres")
     sensor_installed: bool = False
     sensor_type: Optional[str] = Field("Multi-Parameter Groundwater Sonde", max_length=100)
     sensor_model: Optional[str] = Field("AquaSense-Probe-v2", max_length=100)
@@ -164,6 +169,7 @@ class UpdateWellRequest(BaseModel):
     location_description: Optional[str] = Field(None, max_length=255)
     warning_level_m: Optional[float] = Field(None, ge=0.0, le=100.0)
     danger_level_m: Optional[float] = Field(None, ge=0.0, le=100.0)
+    total_depth_m: Optional[float] = Field(None, ge=0.0, le=5000.0, description="Total drilled/borewell depth in metres")
     is_active: Optional[bool] = None
 
 
@@ -187,6 +193,17 @@ def _format_well_dict(w: Well, latest: Optional[Reading] = None) -> Dict[str, An
             "username": w.creator.username,
             "role": getattr(w.creator, "role", "SUBADMIN"),
         }
+    litho_layers = getattr(w, "lithology_layers", []) or []
+    litho_count = len(litho_layers)
+    litho_max_depth = max([l.to_depth_m for l in litho_layers], default=0.0)
+    litho_status = "NONE"
+    if litho_count > 0:
+        if w.total_depth_m and w.total_depth_m > 0:
+            coverage = (litho_max_depth / w.total_depth_m) * 100.0
+            litho_status = "RECORDED" if coverage >= 90.0 else "PARTIAL"
+        else:
+            litho_status = "RECORDED"
+
     return {
         "id": w.id,
         "name": w.name,
@@ -199,6 +216,10 @@ def _format_well_dict(w: Well, latest: Optional[Reading] = None) -> Dict[str, An
         "location_description": w.location_description,
         "warning_level_m": w.warning_level_m,
         "danger_level_m": w.danger_level_m,
+        "total_depth_m": getattr(w, "total_depth_m", None),
+        "lithology_count": litho_count,
+        "lithology_status": litho_status,
+        "total_logged_depth_m": round(litho_max_depth, 2),
         "is_active": w.is_active,
         "created_at": w.created_at,
         "created_by": w.created_by,
@@ -336,6 +357,7 @@ def create_well(
         location_description=payload.location_description.strip() if payload.location_description else None,
         warning_level_m=payload.warning_level_m or 7.5,
         danger_level_m=payload.danger_level_m or 8.5,
+        total_depth_m=payload.total_depth_m,
         is_active=True,
         created_by=user.id,  # Set securely on backend from session
     )
@@ -422,6 +444,8 @@ def update_well(
         w.warning_level_m = payload.warning_level_m
     if payload.danger_level_m is not None:
         w.danger_level_m = payload.danger_level_m
+    if payload.total_depth_m is not None:
+        w.total_depth_m = payload.total_depth_m
     if payload.is_active is not None:
         w.is_active = payload.is_active
 
@@ -606,6 +630,10 @@ async def get_well(well_id: str, db: Session = Depends(get_db)):
         "location_description": w.location_description,
         "warning_level_m": w.warning_level_m,
         "danger_level_m": w.danger_level_m,
+        "total_depth_m": getattr(w, "total_depth_m", None),
+        "lithology_count": len(getattr(w, "lithology_layers", []) or []),
+        "lithology_status": "RECORDED" if (getattr(w, "lithology_layers", []) and (not w.total_depth_m or (max([l.to_depth_m for l in w.lithology_layers], default=0.0) / w.total_depth_m) >= 0.9)) else ("PARTIAL" if getattr(w, "lithology_layers", []) else "NONE"),
+        "total_logged_depth_m": round(max([l.to_depth_m for l in (getattr(w, "lithology_layers", []) or [])], default=0.0), 2),
         "is_active": w.is_active,
         "created_at": w.created_at,
         "created_by": w.created_by,

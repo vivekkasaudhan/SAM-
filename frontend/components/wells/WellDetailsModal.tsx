@@ -39,6 +39,7 @@ import {
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { wellService, authService, isSubadmin } from '@/services/api';
 import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
+import { LithologySection } from '@/components/lithology/LithologySection';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface WellDetailsModalProps {
@@ -58,6 +59,7 @@ export function WellDetailsModal({
   const [readings, setReadings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mainModalTab, setMainModalTab] = useState<'telemetry' | 'lithology'>('telemetry');
   const [activeHistoryTab, setActiveHistoryTab] = useState<'water-level' | 'water-quality'>('water-level');
 
   const fetchWellData = useCallback(async (id: string) => {
@@ -84,6 +86,7 @@ export function WellDetailsModal({
 
   useEffect(() => {
     if (isOpen && wellId) {
+      setMainModalTab('telemetry');
       fetchWellData(wellId);
     } else {
       setWell(null);
@@ -218,6 +221,37 @@ export function WellDetailsModal({
           </div>
         </div>
 
+        {/* ── High-Level Navigation Tabs ─────────────────────────── */}
+        <div className="flex items-center gap-2 px-6 pt-2 border-b border-border/60 bg-muted/10 dark:bg-navy-950/20 text-xs font-bold shrink-0">
+          <button
+            onClick={() => setMainModalTab('telemetry')}
+            className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all ${
+              mainModalTab === 'telemetry'
+                ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Waves className="h-4 w-4" />
+            <span>Hydrological Telemetry & Trends</span>
+          </button>
+          <button
+            onClick={() => setMainModalTab('lithology')}
+            className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all ${
+              mainModalTab === 'lithology'
+                ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            <span>Subsurface Lithology & Stratigraphy</span>
+            {well?.lithology_count != null && well.lithology_count > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 font-mono">
+                {well.lithology_count}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* ── Modal Scrollable Body ───────────────────────────────── */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {loading && !well ? (
@@ -238,15 +272,16 @@ export function WellDetailsModal({
             </div>
           ) : (
             well && (
-              <>
-                {/* ── Top Section: Animated Tube + Current Telemetry Grid ──── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 rounded-3xl bg-muted/20 dark:bg-navy-950/30 border border-border/60 dark:border-navy-800">
-                  {/* Left: Large Animated Water Level Tube (4 cols) */}
-                  <div className="lg:col-span-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-card/60 dark:bg-navy-900/60 border border-border/60 dark:border-navy-800 shadow-inner">
-                    <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <Waves className="h-3.5 w-3.5 text-cyan-500" />
-                      <span>Stage Telemetry</span>
-                    </div>
+              mainModalTab === 'telemetry' ? (
+                <>
+                  {/* ── Top Section: Animated Tube + Current Telemetry Grid ──── */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 rounded-3xl bg-muted/20 dark:bg-navy-950/30 border border-border/60 dark:border-navy-800">
+                    {/* Left: Large Animated Water Level Tube (4 cols) */}
+                    <div className="lg:col-span-4 flex flex-col items-center justify-center p-4 rounded-2xl bg-card/60 dark:bg-navy-900/60 border border-border/60 dark:border-navy-800 shadow-inner">
+                      <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+                        <Waves className="h-3.5 w-3.5 text-cyan-500" />
+                        <span>Stage Telemetry</span>
+                      </div>
 
                     <WellWaterLevel
                       waterLevel={reading?.water_level_m}
@@ -276,6 +311,14 @@ export function WellDetailsModal({
                         </span>
                       </div>
                     )}
+
+                    <button
+                      onClick={() => setMainModalTab('lithology')}
+                      className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all shadow-2xs"
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      <span>View Lithology Profile &rarr;</span>
+                    </button>
                   </div>
 
                   {/* Right: Key Parameters & Attribution (8 cols) */}
@@ -663,9 +706,16 @@ export function WellDetailsModal({
                   </div>
                 </div>
               </>
+            ) : (
+              <LithologySection
+                well={well}
+                waterLevelM={reading?.water_level_m}
+                onProfileUpdated={() => fetchWellData(well.id)}
+              />
             )
-          )}
-        </div>
+          )
+        )}
+      </div>
 
         {/* ── Modal Footer ────────────────────────────────────────── */}
         <div className="p-4 px-6 border-t border-border/60 dark:border-navy-800 bg-muted/20 dark:bg-navy-950/40 flex flex-wrap items-center justify-between gap-3 text-xs">

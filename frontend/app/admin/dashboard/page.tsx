@@ -870,6 +870,23 @@ export default function AdminDashboardPage() {
                                   </span>
                                 )}
                               </div>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {well.lithology_status === 'RECORDED' ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.2 rounded border border-teal-500/20">
+                                    <Layers className="h-2.5 w-2.5" />
+                                    <span>Geology Logged ({well.total_logged_depth_m || 0}m)</span>
+                                  </span>
+                                ) : well.lithology_status === 'PARTIAL' ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                                    <Layers className="h-2.5 w-2.5" />
+                                    <span>Partially Logged</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center text-[9px] text-muted-foreground/60 font-sans">
+                                    • No lithology
+                                  </span>
+                                )}
+                              </div>
                             </td>
 
                             {/* Created By / Owner */}

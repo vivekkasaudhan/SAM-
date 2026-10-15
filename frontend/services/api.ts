@@ -5,6 +5,7 @@ import type {
   MonitoringStation,
   SelectedLocation,
 } from '@/types/environment';
+import type { LithologyLayer, GeologyProfile } from '@/types/lithology';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -121,6 +122,38 @@ export const wellService = {
   },
   async deleteWell(id: string) {
     const response = await api.delete(`/api/wells/${id}`);
+    return response.data;
+  },
+};
+
+// ─── Lithology & Stratigraphy ─────────────────────────────────────────────────
+export const lithologyService = {
+  async getLayers(wellId: string): Promise<LithologyLayer[]> {
+    const response = await api.get<LithologyLayer[]>(`/api/wells/${wellId}/lithology`);
+    return response.data;
+  },
+  async getLayer(wellId: string, layerId: number): Promise<LithologyLayer> {
+    const response = await api.get<LithologyLayer>(`/api/wells/${wellId}/lithology/${layerId}`);
+    return response.data;
+  },
+  async createLayer(wellId: string, data: Partial<LithologyLayer>): Promise<LithologyLayer> {
+    const response = await api.post<LithologyLayer>(`/api/wells/${wellId}/lithology`, data);
+    return response.data;
+  },
+  async updateLayer(wellId: string, layerId: number, data: Partial<LithologyLayer>): Promise<LithologyLayer> {
+    const response = await api.put<LithologyLayer>(`/api/wells/${wellId}/lithology/${layerId}`, data);
+    return response.data;
+  },
+  async deleteLayer(wellId: string, layerId: number): Promise<{ message: string; id: number }> {
+    const response = await api.delete<{ message: string; id: number }>(`/api/wells/${wellId}/lithology/${layerId}`);
+    return response.data;
+  },
+  async getProfile(wellId: string): Promise<GeologyProfile> {
+    const response = await api.get<GeologyProfile>(`/api/wells/${wellId}/lithology/profile`);
+    return response.data;
+  },
+  async seedDemoLayers(wellId: string): Promise<{ message: string; count: number; layers: LithologyLayer[] }> {
+    const response = await api.post<{ message: string; count: number; layers: LithologyLayer[] }>(`/api/wells/${wellId}/lithology/seed-demo`);
     return response.data;
   },
 };
