@@ -264,6 +264,56 @@ export function WellForecastView({
     return forecast?.predictions?.[activeForecastDay - 1] ?? null;
   }, [activeForecastDay, forecast]);
 
+  // Custom dot renderer for historical observations (crisp cyan points)
+  const renderObservedDot = useCallback((props: any) => {
+    const { cx, cy, payload, index } = props;
+    if (payload?.observed_water_level == null) {
+      return <g key={`obs-empty-${index}`} />;
+    }
+    return (
+      <circle
+        key={`obs-dot-${index}`}
+        cx={cx}
+        cy={cy}
+        r={3}
+        fill="#06b6d4"
+        stroke="#ffffff"
+        strokeWidth={1.5}
+      />
+    );
+  }, []);
+
+  // Custom dot renderer for forecast with pulsating radar ripple ring at Day 0 transition point
+  const renderForecastDot = useCallback((props: any) => {
+    const { cx, cy, payload, index } = props;
+    if (payload?.predicted_water_level == null) {
+      return <g key={`fc-empty-${index}`} />;
+    }
+    const isAnchor = !payload.is_prediction && payload.predicted_water_level != null;
+    if (isAnchor) {
+      return (
+        <g key={`anchor-dot-${index}`}>
+          <circle cx={cx} cy={cy} r={14} fill="none" stroke="#a855f7" strokeWidth={1.8} opacity={0.7}>
+            <animate attributeName="r" values="4;18" dur="1.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.9;0" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+          <circle cx={cx} cy={cy} r={5.5} fill="#a855f7" stroke="#ffffff" strokeWidth={2} />
+        </g>
+      );
+    }
+    return (
+      <circle
+        key={`forecast-dot-${index}`}
+        cx={cx}
+        cy={cy}
+        r={2.5}
+        fill="#a855f7"
+        stroke="#ffffff"
+        strokeWidth={1.2}
+      />
+    );
+  }, []);
+
   if (loading && !forecast) {
     return (
       <div className="p-6 space-y-5">
@@ -716,19 +766,26 @@ export function WellForecastView({
       <div className="p-5 rounded-2xl bg-card dark:bg-navy-900/70 border border-border/70 dark:border-navy-800 space-y-3">
         {/* Chart Subheader: Legend & Historical Context Range Switcher */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          {/* Series Legend */}
-          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <span className="w-3 h-0.5 bg-cyan-500 inline-block rounded-full" />
+          {/* Series Legend & Dynamic Animation Status */}
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-cyan-600 dark:text-cyan-400">
+              <span className="w-3.5 h-0.5 bg-cyan-500 inline-block rounded-full shadow-xs" />
               <span>Historical Observation</span>
             </span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <span className="w-3 h-0.5 bg-purple-500 border-b border-dashed border-purple-500 inline-block" />
-              <span>{horizon}-Day Projection</span>
+            <span className="flex items-center gap-1.5 font-semibold text-purple-600 dark:text-purple-400">
+              <span className="w-3.5 h-0.5 bg-purple-500 border-b-2 border-dashed border-purple-500 inline-block animate-pulse" />
+              <span>{horizon}-Day Projection (Flowing Stream)</span>
             </span>
-            <span className="flex items-center gap-1.5 font-medium text-foreground">
-              <span className="w-3 h-2 bg-purple-500/20 inline-block rounded-xs" />
+            <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+              <span className="w-3 h-2 bg-purple-500/25 inline-block rounded-xs" />
               <span>95% Confidence Band</span>
+            </span>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-400 font-sans text-[11px] font-semibold">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+              </span>
+              🌊 Moving Water Wave ("Lahr") Active
             </span>
           </div>
 
@@ -743,7 +800,7 @@ export function WellForecastView({
                 disabled={contextLoading}
                 className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all ${
                   historyContext === rKey
-                    ? 'bg-cyan-500 text-white'
+                    ? 'bg-cyan-500 text-white shadow-xs'
                     : 'bg-muted/60 dark:bg-navy-950 text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -758,23 +815,46 @@ export function WellForecastView({
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
-                <linearGradient id="forecastBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}>
-                    <animate attributeName="stopColor" values="#8b5cf6;#a855f7;#7c3aed;#8b5cf6" dur="4s" repeatCount="indefinite" />
+                {/* Fluid gradient across forecast water body */}
+                <linearGradient id="forecastWaterSurfaceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.35}>
+                    <animate attributeName="stopColor" values="#8b5cf6;#a855f7;#6366f1;#06b6d4;#8b5cf6" dur="6s" repeatCount="indefinite" />
                   </stop>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+                  <stop offset="50%" stopColor="#a855f7" stopOpacity={0.16}>
+                    <animate attributeName="offset" values="35%;65%;35%" dur="4s" repeatCount="indefinite" />
+                  </stop>
+                  <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.02} />
                 </linearGradient>
-                {/* Continuous Animated Water Wave ('Lahr') Pattern for Forecast */}
-                <pattern id="forecastLahrWaves" width="160" height="70" patternUnits="userSpaceOnUse">
-                  <path d="M 0 18 Q 40 6, 80 18 T 160 18 L 160 70 L 0 70 Z" fill="rgba(139, 92, 246, 0.08)">
-                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-160,0" dur="2.5s" repeatCount="indefinite" />
+
+                {/* Seamless wide-format continuous rolling water waves (width=600, height=350: NO vertical cutoffs or tile blocks) */}
+                <pattern id="forecastWaterWaveStream" width="600" height="350" patternUnits="userSpaceOnUse">
+                  {/* Primary rolling crest wave */}
+                  <path d="M 0 18 Q 150 4, 300 18 T 600 18 L 600 350 L 0 350 Z" fill="rgba(168, 85, 247, 0.08)">
+                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-300,0" dur="3s" repeatCount="indefinite" />
                   </path>
-                  <path d="M 0 18 Q 40 6, 80 18 T 160 18" fill="none" stroke="rgba(216, 180, 254, 0.45)" strokeWidth="1.8">
-                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-160,0" dur="2.5s" repeatCount="indefinite" />
+                  <path d="M 0 18 Q 150 4, 300 18 T 600 18" fill="none" stroke="rgba(255, 255, 255, 0.45)" strokeWidth="2">
+                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-300,0" dur="3s" repeatCount="indefinite" />
                   </path>
-                  <circle cx="45" cy="50" r="1.5" fill="rgba(216, 180, 254, 0.6)">
-                    <animate attributeName="cy" values="60;15" dur="1.8s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0;0.8;0" dur="1.8s" repeatCount="indefinite" />
+                  {/* Secondary counter-moving ripple */}
+                  <path d="M 0 40 Q 150 26, 300 40 T 600 40" fill="none" stroke="rgba(192, 132, 252, 0.35)" strokeWidth="1.5">
+                    <animateTransform attributeName="transform" type="translate" from="-300,0" to="0,0" dur="4s" repeatCount="indefinite" />
+                  </path>
+                  {/* Gentle water current streaks */}
+                  <path d="M 0 70 Q 150 58, 300 70 T 600 70" fill="none" stroke="rgba(139, 92, 246, 0.25)" strokeWidth="1.2">
+                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-300,0" dur="2.4s" repeatCount="indefinite" />
+                  </path>
+                  {/* Aeration micro-bubbles rising */}
+                  <circle cx="90" cy="120" r="1.8" fill="rgba(255, 255, 255, 0.65)">
+                    <animate attributeName="cy" values="180;20" dur="2.2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0.9;0" dur="2.2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="340" cy="140" r="2.2" fill="rgba(216, 180, 254, 0.7)">
+                    <animate attributeName="cy" values="200;25" dur="2.8s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0.8;0" dur="2.8s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx="510" cy="100" r="1.5" fill="rgba(168, 85, 247, 0.8)">
+                    <animate attributeName="cy" values="160;18" dur="1.9s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0.85;0" dur="1.9s" repeatCount="indefinite" />
                   </circle>
                 </pattern>
               </defs>
@@ -858,43 +938,64 @@ export function WellForecastView({
                 label={{ value: 'Danger', fill: '#f43f5e', fontSize: 10, position: 'top' }}
               />
 
-              {/* 95% Confidence Band */}
+              {/* 95% Confidence Band: Clean flowing water surface with seamless rolling waves */}
               <Area
                 type="monotone"
                 dataKey="confidence_upper"
                 stroke="none"
-                fill="url(#forecastBandGrad)"
+                fill="url(#forecastWaterSurfaceGrad)"
                 connectNulls={false}
               />
-              {/* Continuous Animated Water Wave ('Lahr') Overlay */}
               <Area
                 type="monotone"
                 dataKey="confidence_upper"
                 stroke="none"
-                fill="url(#forecastLahrWaves)"
+                fill="url(#forecastWaterWaveStream)"
                 fillOpacity={1}
                 connectNulls={false}
                 isAnimationActive={false}
               />
 
-              {/* Historical Line (Solid Cyan) */}
+              {/* Soft upper & lower CI boundary dashed indicator guides */}
+              <Line
+                type="monotone"
+                dataKey="confidence_upper"
+                stroke="rgba(168, 85, 247, 0.45)"
+                strokeDasharray="3 3"
+                strokeWidth={1.2}
+                dot={false}
+                connectNulls={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="confidence_lower"
+                stroke="rgba(168, 85, 247, 0.35)"
+                strokeDasharray="3 3"
+                strokeWidth={1.2}
+                dot={false}
+                connectNulls={false}
+              />
+
+              {/* Historical Telemetry Line (Solid Cyan with crisp dots) */}
               <Line
                 type="monotone"
                 dataKey="observed_water_level"
                 stroke="#06b6d4"
-                strokeWidth={2.2}
-                dot={{ r: 2.5, fill: '#06b6d4' }}
+                strokeWidth={2.5}
+                dot={renderObservedDot}
+                activeDot={{ r: 5, fill: '#06b6d4', stroke: '#ffffff', strokeWidth: 2 }}
                 connectNulls={false}
               />
 
-              {/* Forecast Prediction Line (Dashed Purple) */}
+              {/* Forecast Prediction Stream (Continuously Animated Flowing Dashes into the Future) */}
               <Line
                 type="monotone"
                 dataKey="predicted_water_level"
+                className="forecast-flowing-stream"
                 stroke="#8b5cf6"
-                strokeWidth={2.2}
-                strokeDasharray="4 4"
-                dot={{ r: 2.5, fill: '#8b5cf6' }}
+                strokeWidth={2.8}
+                dot={renderForecastDot}
+                activeDot={{ r: 6, fill: '#a855f7', stroke: '#ffffff', strokeWidth: 2 }}
                 connectNulls={false}
               />
             </ComposedChart>
