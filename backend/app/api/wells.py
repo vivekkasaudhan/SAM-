@@ -5,7 +5,7 @@ import secrets
 import re
 from pydantic import BaseModel, Field
 
-from app.models.database import SessionLocal, Well, Sensor, Reading, User
+from app.models.database import SessionLocal, Well, Sensor, Reading, User, Alert
 from app.auth import (
     get_current_user,
     get_current_admin,
@@ -199,6 +199,7 @@ class WellFullDetailOut(WellDetailOut):
     weather: Optional[Dict[str, Any]] = None
     air_quality: Optional[Dict[str, Any]] = None
     risk: Optional[Dict[str, Any]] = None
+    active_alerts: Optional[List[Dict[str, Any]]] = None
 
 
 class CreateWellRequest(BaseModel):
@@ -691,6 +692,29 @@ async def get_well(well_id: str, db: Session = Depends(get_db)):
             "role": getattr(w.creator, "role", "SUBADMIN"),
         }
 
+    # Query active early-warning alerts for this well
+    active_alerts_db = db.query(Alert).filter(Alert.well_id == well_id, Alert.status == "ACTIVE").order_by(Alert.severity.desc(), Alert.created_at.desc()).all()
+    active_alerts_list = [
+        {
+            "id": a.id,
+            "well_id": a.well_id,
+            "alert_type": a.alert_type,
+            "severity": a.severity,
+            "is_forecast": a.is_forecast,
+            "forecast_horizon_days": a.forecast_horizon_days,
+            "metric": a.metric,
+            "observed_value": a.observed_value,
+            "threshold_value": a.threshold_value,
+            "unit": a.unit,
+            "reason": a.reason,
+            "recommended_action": a.recommended_action,
+            "status": a.status,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+            "last_evaluated_at": a.last_evaluated_at.isoformat() if a.last_evaluated_at else None,
+        }
+        for a in active_alerts_db
+    ]
+
     return {
         "id": w.id,
         "name": w.name,
@@ -719,6 +743,7 @@ async def get_well(well_id: str, db: Session = Depends(get_db)):
         "weather": weather_data,
         "air_quality": air_quality_data,
         "risk": risk_data,
+        "active_alerts": active_alerts_list,
     }
 
 

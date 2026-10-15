@@ -168,7 +168,8 @@ class SensorIngestionService:
                 temperature_c=round(temperature_c, 1),
                 status=DataStatusEnum.LIVE,  # Authenticated live physical sensor reading!
                 source=DataSourceEnum.IOT_SENSOR,
-                timestamp=timestamp,
+                timestamp=timestamp,  # Physical measurement timestamp
+                received_at=now,      # Device transmission communication timestamp
             )
             db.add(new_reading)
             db.flush()
@@ -176,6 +177,8 @@ class SensorIngestionService:
             # 7. Update Sensor Hardware Status & Last Seen Time
             sensor.last_seen_at = now
             sensor.is_active = True
+            if well.monitoring_type != "PHYSICAL_SENSOR":
+                well.monitoring_type = "PHYSICAL_SENSOR"
             db.commit()
             db.refresh(new_reading)
 

@@ -10,6 +10,8 @@ export interface WellWaterLevelProps {
   warningLevel?: number;
   /** Danger threshold level in meters (default: 8.5m) */
   dangerLevel?: number;
+  /** Critical low / depletion threshold in meters (default: 1.2m) */
+  criticalLowLevel?: number;
   /** Minimum scale level in meters (default: 0m) */
   minLevel?: number;
   /** Maximum scale level in meters (default: computed based on dangerLevel or 10m) */
@@ -36,6 +38,7 @@ export function WellWaterLevel({
   waterLevel,
   warningLevel = 7.5,
   dangerLevel = 8.5,
+  criticalLowLevel = 1.2,
   minLevel = 0,
   maxLevel,
   unit = 'm',
@@ -50,6 +53,7 @@ export function WellWaterLevel({
   // Validate and compute scale limits safely
   const safeWarningLevel = typeof warningLevel === 'number' && !isNaN(warningLevel) ? warningLevel : 7.5;
   const safeDangerLevel = typeof dangerLevel === 'number' && !isNaN(dangerLevel) ? dangerLevel : 8.5;
+  const safeCriticalLow = typeof criticalLowLevel === 'number' && !isNaN(criticalLowLevel) ? criticalLowLevel : 1.2;
   const safeMin = typeof minLevel === 'number' && !isNaN(minLevel) ? minLevel : 0;
   
   const computedMax = useMemo(() => {
@@ -86,19 +90,29 @@ export function WellWaterLevel({
     return Math.min(100, Math.max(0, ((safeDangerLevel - safeMin) / range) * 100));
   }, [safeDangerLevel, safeMin, computedMax]);
 
-  // Stage assessment (NORMAL, WARNING, DANGER)
+  const criticalLowPercentage = useMemo(() => {
+    const range = computedMax - safeMin;
+    if (range <= 0) return 12;
+    return Math.min(100, Math.max(0, ((safeCriticalLow - safeMin) / range) * 100));
+  }, [safeCriticalLow, safeMin, computedMax]);
+
+  // Stage assessment (NORMAL, WARNING, DANGER, DEPLETION)
   const currentStatus = useMemo(() => {
     if (statusProp) return statusProp.toUpperCase();
     if (currentLevel === null) return 'UNAVAILABLE';
     if (currentLevel >= safeDangerLevel) return 'DANGER';
     if (currentLevel >= safeWarningLevel) return 'WARNING';
+    if (currentLevel <= safeCriticalLow) return 'DEPLETION';
     return 'NORMAL';
-  }, [statusProp, currentLevel, safeDangerLevel, safeWarningLevel]);
+  }, [statusProp, currentLevel, safeDangerLevel, safeWarningLevel, safeCriticalLow]);
 
   // Dynamic gradient styling according to current status
   const waterGradient = useMemo(() => {
     if (currentStatus === 'DANGER') {
       return 'from-rose-500 via-red-500 to-rose-700 shadow-[0_0_20px_rgba(244,63,94,0.4)]';
+    }
+    if (currentStatus === 'DEPLETION') {
+      return 'from-orange-500 via-red-500 to-amber-700 shadow-[0_0_20px_rgba(239,68,68,0.4)]';
     }
     if (currentStatus === 'WARNING') {
       return 'from-amber-400 via-orange-400 to-amber-600 shadow-[0_0_20px_rgba(245,158,11,0.35)]';
@@ -109,6 +123,7 @@ export function WellWaterLevel({
 
   const meniscusColor = useMemo(() => {
     if (currentStatus === 'DANGER') return 'bg-rose-300 border-rose-200';
+    if (currentStatus === 'DEPLETION') return 'bg-orange-300 border-orange-200';
     if (currentStatus === 'WARNING') return 'bg-amber-200 border-amber-100';
     return 'bg-cyan-200 border-cyan-100';
   }, [currentStatus]);
@@ -192,6 +207,17 @@ export function WellWaterLevel({
             </div>
           )}
 
+          {/* Critical Low Depletion Marker */}
+          {criticalLowPercentage > 0 && criticalLowPercentage < 100 && (
+            <div
+              className="absolute left-0 right-0 border-b border-dashed border-orange-500/80 z-20 pointer-events-none transition-all"
+              style={{ bottom: `${criticalLowPercentage}%` }}
+              title={`Critical Depletion Threshold: ${safeCriticalLow.toFixed(1)}${unit}`}
+            >
+              <span className="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-orange-500 opacity-90 shadow-xs" />
+            </div>
+          )}
+
           {/* ── Realistic Liquid Column (fills upward) ─────────────── */}
           {hasReading ? (
             <div
@@ -266,6 +292,8 @@ export function WellWaterLevel({
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border shadow-2xs ${
               currentStatus === 'DANGER'
                 ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                : currentStatus === 'DEPLETION'
+                ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30'
                 : currentStatus === 'WARNING'
                 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                 : currentStatus === 'NORMAL'
@@ -277,6 +305,8 @@ export function WellWaterLevel({
               className={`w-1.5 h-1.5 rounded-full ${
                 currentStatus === 'DANGER'
                   ? 'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.6)]'
+                  : currentStatus === 'DEPLETION'
+                  ? 'bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.6)]'
                   : currentStatus === 'WARNING'
                   ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]'
                   : currentStatus === 'NORMAL'
@@ -284,7 +314,7 @@ export function WellWaterLevel({
                   : 'bg-gray-400'
               }`}
             />
-            <span>{currentStatus}</span>
+            <span>{currentStatus === 'DEPLETION' ? 'DEPLETED' : currentStatus}</span>
           </span>
         </div>
 

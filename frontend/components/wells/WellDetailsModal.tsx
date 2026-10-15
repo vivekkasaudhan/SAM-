@@ -38,7 +38,14 @@ import {
   Legend,
 } from 'recharts';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { wellService, authService, isSubadmin, HistoricalAnalysisResponse } from '@/services/api';
+import {
+  wellService,
+  alertService,
+  authService,
+  isSubadmin,
+  HistoricalAnalysisResponse,
+  Alert,
+} from '@/services/api';
 import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
 import { LithologySection } from '@/components/lithology/LithologySection';
 import { WellForecastView } from './WellForecastView';
@@ -72,6 +79,24 @@ export function WellDetailsModal({
   const [customEndDate, setCustomEndDate] = useState<string>('');
   const [historyAnalysis, setHistoryAnalysis] = useState<HistoricalAnalysisResponse | null>(null);
   const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+  const [acknowledgingId, setAcknowledgingId] = useState<number | null>(null);
+
+  const handleAcknowledgeAlert = async (alertId: number) => {
+    setAcknowledgingId(alertId);
+    try {
+      await alertService.acknowledgeAlert(alertId);
+      if (well) {
+        setWell({
+          ...well,
+          active_alerts: (well.active_alerts || []).filter((a: any) => a.id !== alertId),
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to acknowledge alert:', err);
+    } finally {
+      setAcknowledgingId(null);
+    }
+  };
 
   const fetchHistoryAnalysis = useCallback(
     async (id: string, range: HistoryRange, start?: string, end?: string) => {
@@ -282,6 +307,12 @@ export function WellDetailsModal({
           >
             <Waves className="h-4 w-4" />
             <span>Hydrological Telemetry & Trends</span>
+            {well?.active_alerts != null && well.active_alerts.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-600 dark:text-rose-400 font-mono font-bold flex items-center gap-0.5">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                {well.active_alerts.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setMainModalTab('lithology')}
@@ -337,6 +368,128 @@ export function WellDetailsModal({
             well && (
               mainModalTab === 'telemetry' ? (
                 <>
+                  {/* ── Active Early-Warning Alerts & Anomaly Section ── */}
+                  {well.active_alerts && well.active_alerts.length > 0 && (
+                    <div className="p-5 rounded-3xl bg-card dark:bg-navy-900 border border-border/80 dark:border-navy-800 shadow-md space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-xl bg-rose-500/10 text-rose-500">
+                            <ShieldAlert className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-foreground flex items-center gap-2">
+                              <span>Active Early-Warning & Risk Alerts</span>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400">
+                                {well.active_alerts.length} Active
+                              </span>
+                            </h4>
+                            <p className="text-[11px] text-muted-foreground">
+                              Automated anomaly detection across telemetry freshness, physical thresholds, and predictive trajectories
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 pt-1">
+                        {well.active_alerts.map((alert: any) => {
+                          const isCritical = alert.severity === 'CRITICAL';
+                          const isWarning = alert.severity === 'WARNING';
+                          const borderClass = isCritical
+                            ? 'border-rose-500/40 bg-rose-500/5'
+                            : isWarning
+                            ? 'border-amber-500/40 bg-amber-500/5'
+                            : 'border-cyan-500/40 bg-cyan-500/5';
+                          const badgeClass = isCritical
+                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                            : isWarning
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                            : 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30';
+
+                          return (
+                            <div
+                              key={alert.id}
+                              className={`p-4 rounded-2xl border ${borderClass} space-y-2.5 transition-all`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${badgeClass}`}>
+                                    {alert.severity}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                                    alert.is_forecast
+                                      ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                                      : 'bg-muted/80 text-foreground border-border/60'
+                                  }`}>
+                                    {alert.is_forecast ? `PREDICTIVE FORECAST (+${alert.forecast_horizon_days}d)` : 'OBSERVED TELEMETRY'}
+                                  </span>
+                                  <strong className="text-xs font-bold text-foreground">
+                                    {alert.alert_type.replace(/_/g, ' ')}
+                                  </strong>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+                                    <Clock className="h-3 w-3" />
+                                    Detected {formatTimestamp(alert.created_at)}
+                                  </span>
+                                  <button
+                                    onClick={() => handleAcknowledgeAlert(alert.id)}
+                                    disabled={acknowledgingId === alert.id}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border/80 hover:border-foreground/30 disabled:opacity-50 transition-all flex items-center gap-1"
+                                    title="Mark alert as acknowledged"
+                                  >
+                                    {acknowledgingId === alert.id ? (
+                                      <RefreshCw className="h-3 w-3 animate-spin text-cyan-500" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                    )}
+                                    <span>Acknowledge</span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Telemetry Metric & Threshold comparison */}
+                              <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-card/60 dark:bg-navy-950/60 p-2.5 rounded-xl border border-border/50">
+                                <div>
+                                  <span className="text-muted-foreground">Parameter: </span>
+                                  <strong className="text-foreground uppercase">{alert.metric}</strong>
+                                </div>
+                                {alert.observed_value != null && (
+                                  <div>
+                                    <span className="text-muted-foreground">Observed: </span>
+                                    <strong className={isCritical ? 'text-rose-500' : 'text-amber-500'}>
+                                      {alert.observed_value} {alert.unit}
+                                    </strong>
+                                  </div>
+                                )}
+                                {alert.threshold_value != null && (
+                                  <div>
+                                    <span className="text-muted-foreground">Threshold: </span>
+                                    <strong className="text-foreground">
+                                      {alert.threshold_value} {alert.unit}
+                                    </strong>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Scientific Reason & Diagnostic */}
+                              <div className="text-xs text-foreground/90 leading-relaxed">
+                                <span className="font-semibold text-muted-foreground">Diagnosis: </span>
+                                {alert.reason}
+                              </div>
+
+                              {/* Recommended Next Action */}
+                              <div className="text-xs text-foreground/90 bg-muted/30 dark:bg-navy-950/40 p-2.5 rounded-xl border border-border/40">
+                                <strong className="text-cyan-600 dark:text-cyan-400">Recommended Action: </strong>
+                                {alert.recommended_action}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Top Section: Animated Tube + Current Telemetry Grid ──── */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 rounded-3xl bg-muted/20 dark:bg-navy-950/30 border border-border/60 dark:border-navy-800">
                     {/* Left: Large Animated Water Level Tube (4 cols) */}
@@ -350,6 +503,7 @@ export function WellDetailsModal({
                       waterLevel={reading?.water_level_m}
                       warningLevel={well.warning_level_m || 7.5}
                       dangerLevel={well.danger_level_m || 8.5}
+                      criticalLowLevel={1.2}
                       height={240}
                       compact={false}
                       showTicks={true}
@@ -785,6 +939,12 @@ export function WellDetailsModal({
                             stroke="#f43f5e"
                             strokeDasharray="4 4"
                             label={{ value: 'Danger', fill: '#f43f5e', fontSize: 10, position: 'top' }}
+                          />
+                          <ReferenceLine
+                            y={1.2}
+                            stroke="#ef4444"
+                            strokeDasharray="4 4"
+                            label={{ value: 'Critical Low (1.2m)', fill: '#ef4444', fontSize: 10, position: 'bottom' }}
                           />
                           <Area
                             type="monotone"

@@ -256,6 +256,12 @@ class Well(Base):
         cascade="all, delete-orphan",
         order_by="WaterLevelForecast.generated_at.desc()",
     )
+    alerts = relationship(
+        "Alert",
+        back_populates="well",
+        cascade="all, delete-orphan",
+        order_by="Alert.created_at.desc()",
+    )
 
 
 # 13. sensors
@@ -298,6 +304,7 @@ class Reading(Base):
     status = Column(Enum(DataStatusEnum), default=DataStatusEnum.SIMULATED)
     source = Column(Enum(DataSourceEnum), default=DataSourceEnum.SYNTHETIC)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    received_at = Column(DateTime, default=datetime.utcnow, nullable=True)
 
     well = relationship("Well", back_populates="readings")
     sensor = relationship("Sensor", back_populates="readings")
@@ -354,6 +361,39 @@ class WaterLevelForecast(Base):
     well = relationship("Well", back_populates="forecasts")
 
 
+# 16. alerts (Groundwater early warning & anomaly detection)
+class Alert(Base):
+    """
+    Early-warning alert record for groundwater monitoring stations.
+    Tracks both observed telemetry problems and model-projected risks.
+    Maintains active vs resolved states and deduplicates active alerts.
+    """
+    __tablename__ = "alerts"
+    __table_args__ = (
+        Index("idx_alerts_well_status_type", "well_id", "status", "alert_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    well_id = Column(String(50), ForeignKey("wells.id", ondelete="CASCADE"), nullable=False, index=True)
+    alert_type = Column(String(50), nullable=False, index=True)  # RAPID_DECLINE, CRITICAL_HIGH, CRITICAL_LOW, FORECASTED_CROSSING, STALE_TELEMETRY, WATER_QUALITY_ANOMALY
+    severity = Column(String(20), nullable=False, index=True)  # CRITICAL, WARNING, INFO
+    is_forecast = Column(Boolean, default=False, nullable=False, index=True)
+    forecast_horizon_days = Column(Integer, nullable=True)
+    metric = Column(String(50), nullable=False)  # water_level, ph, turbidity, tds, dissolved_oxygen, freshness
+    observed_value = Column(Float, nullable=True)
+    threshold_value = Column(Float, nullable=True)
+    unit = Column(String(20), default="m")
+    reason = Column(Text, nullable=False)
+    recommended_action = Column(Text, nullable=False)
+    status = Column(String(20), default="ACTIVE", nullable=False, index=True)  # ACTIVE, RESOLVED, ACKNOWLEDGED
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    last_evaluated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+
+    well = relationship("Well", back_populates="alerts")
+
+
 # Database Engine and Session Factory
 DATABASE_URL = "sqlite:///./aquasense.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -364,6 +404,10 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     try:
         with engine.connect() as conn:
+            # Migrate readings table columns (received_at)
+            reading_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(readings)").fetchall()]
+            if "received_at" not in reading_cols:
+                conn.exec_driver_sql("ALTER TABLE readings ADD COLUMN received_at DATETIME NULL")
             # 1. Migrate sensors table columns
             sensor_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(sensors)").fetchall()]
             new_sensor_cols = [

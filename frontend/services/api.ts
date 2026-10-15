@@ -458,6 +458,63 @@ export const forecastService = {
   },
 };
 
+// ─── Early-Warning & Risk Alerts ──────────────────────────────────────────────
+export interface Alert {
+  id: number;
+  well_id: string;
+  well_name?: string;
+  alert_type: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  is_forecast: boolean;
+  forecast_horizon_days?: number | null;
+  metric: string;
+  observed_value?: number | null;
+  threshold_value?: number | null;
+  unit: string;
+  reason: string;
+  recommended_action: string;
+  status: 'ACTIVE' | 'RESOLVED' | 'ACKNOWLEDGED';
+  created_at: string;
+  last_evaluated_at: string;
+  resolved_at?: string | null;
+}
+
+export interface AlertSummary {
+  total_active: number;
+  critical_count: number;
+  warning_count: number;
+  info_count: number;
+  forecast_alert_count: number;
+  observed_alert_count: number;
+  wells_affected: number;
+  evaluated_at: string;
+}
+
+export const alertService = {
+  async getAlerts(params?: {
+    well_id?: string;
+    status?: 'ACTIVE' | 'RESOLVED' | 'ACKNOWLEDGED' | 'ALL';
+    severity?: 'CRITICAL' | 'WARNING' | 'INFO';
+    is_forecast?: boolean;
+    limit?: number;
+  }): Promise<Alert[]> {
+    const response = await api.get<Alert[]>('/api/alerts', { params });
+    return response.data;
+  },
+  async getAlertSummary(): Promise<AlertSummary> {
+    const response = await api.get<AlertSummary>('/api/alerts/summary');
+    return response.data;
+  },
+  async evaluateAlerts(well_id?: string): Promise<{ status: string; total_active_alerts: number; alerts: Alert[] }> {
+    const response = await api.post('/api/alerts/evaluate', null, { params: well_id ? { well_id } : {} });
+    return response.data;
+  },
+  async acknowledgeAlert(alert_id: number): Promise<Alert> {
+    const response = await api.post<Alert>(`/api/alerts/${alert_id}/acknowledge`);
+    return response.data;
+  },
+};
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 export const healthService = {
   async ping(): Promise<boolean> {
@@ -471,3 +528,4 @@ export const healthService = {
 };
 
 export default api;
+
