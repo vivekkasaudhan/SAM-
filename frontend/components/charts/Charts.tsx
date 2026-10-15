@@ -101,9 +101,32 @@ export function WaterLevelChart({ lat, lon, warningLevel, dangerLevel }: WaterLe
         <ComposedChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <defs>
             <linearGradient id="wlGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}>
+                <animate attributeName="stopColor" values="#3b82f6;#06b6d4;#2563eb;#3b82f6" dur="4s" repeatCount="indefinite" />
+              </stop>
+              <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.04} />
             </linearGradient>
+
+            {/* Continuous Animated Water Wave ('Lahr') Pattern */}
+            <pattern id="waterLahrWavesDashboard" width="180" height="80" patternUnits="userSpaceOnUse">
+              <path d="M 0 20 Q 45 6, 90 20 T 180 20 L 180 80 L 0 80 Z" fill="rgba(59, 130, 246, 0.08)">
+                <animateTransform attributeName="transform" type="translate" from="0,0" to="-180,0" dur="2.2s" repeatCount="indefinite" />
+              </path>
+              <path d="M 0 20 Q 45 6, 90 20 T 180 20" fill="none" stroke="rgba(255, 255, 255, 0.45)" strokeWidth="2">
+                <animateTransform attributeName="transform" type="translate" from="0,0" to="-180,0" dur="2.2s" repeatCount="indefinite" />
+              </path>
+              <path d="M 0 45 Q 45 32, 90 45 T 180 45" fill="none" stroke="rgba(6, 182, 212, 0.35)" strokeWidth="1.6">
+                <animateTransform attributeName="transform" type="translate" from="-90,0" to="90,0" dur="3s" repeatCount="indefinite" />
+              </path>
+              <circle cx="35" cy="65" r="1.8" fill="rgba(255, 255, 255, 0.6)">
+                <animate attributeName="cy" values="75;15" dur="1.6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0;0.9;0" dur="1.6s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="120" cy="55" r="2.2" fill="rgba(147, 197, 253, 0.6)">
+                <animate attributeName="cy" values="78;20" dur="2.2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0;0.8;0" dur="2.2s" repeatCount="indefinite" />
+              </circle>
+            </pattern>
           </defs>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
           <XAxis dataKey="timestamp" tickFormatter={formatTick} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
@@ -112,6 +135,8 @@ export function WaterLevelChart({ lat, lon, warningLevel, dangerLevel }: WaterLe
           <ReferenceLine y={warningLevel} stroke="#f59e0b" strokeDasharray="6 3" strokeWidth={1.5} label={{ value: '⚠ Warning', position: 'right', fill: '#f59e0b', fontSize: 10 }} />
           <ReferenceLine y={dangerLevel} stroke="#ef4444" strokeWidth={2} label={{ value: '🔴 Danger', position: 'right', fill: '#ef4444', fontSize: 10 }} />
           <Area type="monotone" dataKey="value" name="Water Level (m)" stroke="#3b82f6" fill="url(#wlGrad)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+          {/* Animated Water Wave ('Lahr') Overlay */}
+          <Area type="monotone" dataKey="value" stroke="none" fill="url(#waterLahrWavesDashboard)" fillOpacity={1} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

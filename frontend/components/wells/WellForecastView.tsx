@@ -759,9 +759,24 @@ export function WellForecastView({
             <ComposedChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="forecastBandGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}>
+                    <animate attributeName="stopColor" values="#8b5cf6;#a855f7;#7c3aed;#8b5cf6" dur="4s" repeatCount="indefinite" />
+                  </stop>
                   <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
                 </linearGradient>
+                {/* Continuous Animated Water Wave ('Lahr') Pattern for Forecast */}
+                <pattern id="forecastLahrWaves" width="160" height="70" patternUnits="userSpaceOnUse">
+                  <path d="M 0 18 Q 40 6, 80 18 T 160 18 L 160 70 L 0 70 Z" fill="rgba(139, 92, 246, 0.08)">
+                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-160,0" dur="2.5s" repeatCount="indefinite" />
+                  </path>
+                  <path d="M 0 18 Q 40 6, 80 18 T 160 18" fill="none" stroke="rgba(216, 180, 254, 0.45)" strokeWidth="1.8">
+                    <animateTransform attributeName="transform" type="translate" from="0,0" to="-160,0" dur="2.5s" repeatCount="indefinite" />
+                  </path>
+                  <circle cx="45" cy="50" r="1.5" fill="rgba(216, 180, 254, 0.6)">
+                    <animate attributeName="cy" values="60;15" dur="1.8s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0;0.8;0" dur="1.8s" repeatCount="indefinite" />
+                  </circle>
+                </pattern>
               </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
               <XAxis
@@ -850,6 +865,16 @@ export function WellForecastView({
                 stroke="none"
                 fill="url(#forecastBandGrad)"
                 connectNulls={false}
+              />
+              {/* Continuous Animated Water Wave ('Lahr') Overlay */}
+              <Area
+                type="monotone"
+                dataKey="confidence_upper"
+                stroke="none"
+                fill="url(#forecastLahrWaves)"
+                fillOpacity={1}
+                connectNulls={false}
+                isAnimationActive={false}
               />
 
               {/* Historical Line (Solid Cyan) */}

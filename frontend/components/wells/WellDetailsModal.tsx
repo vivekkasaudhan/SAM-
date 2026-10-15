@@ -716,35 +716,46 @@ export function WellDetailsModal({
                     </div>
 
                     {/* Chart Tab Toggle */}
-                    <div className="flex items-center gap-1 p-1 rounded-xl bg-card dark:bg-navy-900 border border-border/60 text-xs">
-                      <button
-                        onClick={() => setActiveHistoryTab('water-level')}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                          activeHistoryTab === 'water-level'
-                            ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 shadow-xs'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Water Stage
-                      </button>
-                      <button
-                        onClick={() => setActiveHistoryTab('water-quality')}
-                        className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                          activeHistoryTab === 'water-quality'
-                            ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400 shadow-xs'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        Water Quality
-                      </button>
-                      <button
-                        onClick={() => setMainModalTab('forecast')}
-                        className="px-2.5 py-1 rounded-lg font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-all flex items-center gap-1"
-                        title="Open Groundwater Level Forecasting & Backtesting"
-                      >
-                        <TrendingUp className="h-3 w-3" />
-                        <span>Forecast ↗</span>
-                      </button>
+                    <div className="flex items-center gap-2">
+                      {activeHistoryTab === 'water-level' && (
+                        <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 font-sans text-[11px] font-medium shadow-xs">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                          </span>
+                          🌊 Water Lahr Motion Active
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 p-1 rounded-xl bg-card dark:bg-navy-900 border border-border/60 text-xs">
+                        <button
+                          onClick={() => setActiveHistoryTab('water-level')}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                            activeHistoryTab === 'water-level'
+                              ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Water Stage
+                        </button>
+                        <button
+                          onClick={() => setActiveHistoryTab('water-quality')}
+                          className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                            activeHistoryTab === 'water-quality'
+                              ? 'bg-teal-500/20 text-teal-600 dark:text-teal-400 shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Water Quality
+                        </button>
+                        <button
+                          onClick={() => setMainModalTab('forecast')}
+                          className="px-2.5 py-1 rounded-lg font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 transition-all flex items-center gap-1"
+                          title="Open Groundwater Level Forecasting & Backtesting"
+                        >
+                          <TrendingUp className="h-3 w-3" />
+                          <span>Forecast ↗</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -905,10 +916,51 @@ export function WellDetailsModal({
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={readings} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                           <defs>
+                            {/* Animated Ambient Water Depth Gradient */}
                             <linearGradient id="wellWaterGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.6} />
-                              <stop offset="95%" stopColor="#0e7490" stopOpacity={0.05} />
+                              <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.72}>
+                                <animate attributeName="stopColor" values="#06b6d4;#22d3ee;#0891b2;#06b6d4" dur="4s" repeatCount="indefinite" />
+                              </stop>
+                              <stop offset="55%" stopColor="#0891b2" stopOpacity={0.38}>
+                                <animate attributeName="offset" values="50%;62%;50%" dur="3.5s" repeatCount="indefinite" />
+                              </stop>
+                              <stop offset="100%" stopColor="#0e7490" stopOpacity={0.06} />
                             </linearGradient>
+
+                            {/* Continuous Animated Water Wave ('Lahr') Pattern */}
+                            <pattern id="waterLahrWaves" width="200" height="90" patternUnits="userSpaceOnUse">
+                              {/* Primary rolling water wave (Lahr) moving continuously */}
+                              <path d="M 0 22 Q 50 8, 100 22 T 200 22 L 200 90 L 0 90 Z" fill="rgba(6, 182, 212, 0.09)">
+                                <animateTransform attributeName="transform" type="translate" from="0,0" to="-200,0" dur="2.4s" repeatCount="indefinite" />
+                              </path>
+                              <path d="M 0 22 Q 50 8, 100 22 T 200 22" fill="none" stroke="rgba(255, 255, 255, 0.38)" strokeWidth="2.2">
+                                <animateTransform attributeName="transform" type="translate" from="0,0" to="-200,0" dur="2.4s" repeatCount="indefinite" />
+                              </path>
+
+                              {/* Secondary reverse undertow ripple wave */}
+                              <path d="M 0 48 Q 50 34, 100 48 T 200 48" fill="none" stroke="rgba(34, 211, 238, 0.3)" strokeWidth="1.8">
+                                <animateTransform attributeName="transform" type="translate" from="-100,0" to="100,0" dur="3.2s" repeatCount="indefinite" />
+                              </path>
+
+                              {/* Third deep fluid streamline streak */}
+                              <path d="M 0 70 Q 50 58, 100 70 T 200 70" fill="none" stroke="rgba(14, 116, 144, 0.35)" strokeWidth="1.4">
+                                <animateTransform attributeName="transform" type="translate" from="0,0" to="-200,0" dur="1.8s" repeatCount="indefinite" />
+                              </path>
+
+                              {/* Rising aeration bubbles inside the wave body */}
+                              <circle cx="40" cy="70" r="2" fill="rgba(255, 255, 255, 0.55)">
+                                <animate attributeName="cy" values="85;18" dur="1.7s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0;0.85;0" dur="1.7s" repeatCount="indefinite" />
+                              </circle>
+                              <circle cx="140" cy="60" r="2.4" fill="rgba(255, 255, 255, 0.5)">
+                                <animate attributeName="cy" values="88;22" dur="2.1s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0;0.75;0" dur="2.1s" repeatCount="indefinite" />
+                              </circle>
+                              <circle cx="90" cy="75" r="1.6" fill="rgba(34, 211, 238, 0.6)">
+                                <animate attributeName="cy" values="90;25" dur="1.4s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0;0.9;0" dur="1.4s" repeatCount="indefinite" />
+                              </circle>
+                            </pattern>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                           <XAxis
@@ -993,6 +1045,15 @@ export function WellDetailsModal({
                             strokeWidth={2.5}
                             fillOpacity={1}
                             fill="url(#wellWaterGrad)"
+                          />
+                          {/* Continuous Animated Water Wave ("Water Lahr") Overlay */}
+                          <Area
+                            type="monotone"
+                            dataKey="water_level_m"
+                            stroke="none"
+                            fillOpacity={1}
+                            fill="url(#waterLahrWaves)"
+                            isAnimationActive={false}
                           />
                         </AreaChart>
                       </ResponsiveContainer>

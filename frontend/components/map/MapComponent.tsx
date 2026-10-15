@@ -52,6 +52,112 @@ const WATER_STATION_ICON = createDivIcon('#0284c7', '🌊', 28);
 const AIR_STATION_ICON = createDivIcon('#10b981', '🌿', 28);
 const IOT_ICON = createDivIcon('#8b5cf6', '📡', 28);
 
+export function getWellRiskStatus(st: MonitoringStation): 'DANGER' | 'WARNING' | 'NORMAL' {
+  const wl = st.latest_reading?.water_level_m;
+  if (wl == null) return 'NORMAL';
+  const danger = st.danger_level_m ?? 8.5;
+  const warn = st.warning_level_m ?? 7.0;
+  if (wl >= danger) return 'DANGER';
+  if (wl >= warn) return 'WARNING';
+  return 'NORMAL';
+}
+
+export function createWellMapIcon(name: string, riskStatus: 'DANGER' | 'WARNING' | 'NORMAL') {
+  let pinColor = '#2563eb'; // BLUE for Normal level
+  let glowColor = 'rgba(37, 99, 235, 0.45)';
+  let badgeBorder = 'rgba(59, 130, 246, 0.7)';
+  let badgeBg = 'rgba(15, 23, 42, 0.92)';
+  let dotColor = '#38bdf8';
+  let emoji = '🚰';
+
+  if (riskStatus === 'DANGER') {
+    pinColor = '#ef4444'; // RED for Danger level
+    glowColor = 'rgba(239, 68, 68, 0.55)';
+    badgeBorder = 'rgba(239, 68, 68, 0.8)';
+    badgeBg = 'rgba(69, 10, 10, 0.94)';
+    dotColor = '#f87171';
+    emoji = '🚨';
+  } else if (riskStatus === 'WARNING') {
+    pinColor = '#eab308'; // YELLOW for Warning level
+    glowColor = 'rgba(234, 179, 8, 0.55)';
+    badgeBorder = 'rgba(234, 179, 8, 0.8)';
+    badgeBg = 'rgba(66, 32, 6, 0.94)';
+    dotColor = '#facc15';
+    emoji = '⚠️';
+  }
+
+  const safeName = (name || 'Well Station').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  return L.divIcon({
+    className: 'custom-well-map-pin',
+    html: `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        transform:translate(-50%, -100%);
+        pointer-events:auto;
+        cursor:pointer;
+        user-select:none;
+      ">
+        <!-- Well Name Label Pill Above Pointer -->
+        <div style="
+          background:${badgeBg};
+          backdrop-filter:blur(6px);
+          color:white;
+          font-size:11px;
+          font-weight:700;
+          font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+          padding:2.5px 8px;
+          border-radius:12px;
+          border:1.5px solid ${badgeBorder};
+          white-space:nowrap;
+          box-shadow:0 3px 10px rgba(0,0,0,0.5), 0 0 8px ${glowColor};
+          margin-bottom:4px;
+          max-width:180px;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          display:flex;
+          align-items:center;
+          gap:4.5px;
+        ">
+          <span style="
+            width:6px;
+            height:6px;
+            border-radius:50%;
+            background:${dotColor};
+            box-shadow:0 0 6px ${dotColor};
+            flex-shrink:0;
+            display:inline-block;
+          "></span>
+          <span style="overflow:hidden; text-overflow:ellipsis;">${safeName}</span>
+        </div>
+
+        <!-- Colored Teardrop Pointer Pin (Red: Danger, Yellow: Warning, Blue: Normal) -->
+        <div style="
+          width:30px;
+          height:30px;
+          background:${pinColor};
+          border-radius:50% 50% 50% 0;
+          transform:rotate(-45deg);
+          border:2.5px solid white;
+          box-shadow:0 3px 12px rgba(0,0,0,0.45), 0 0 10px ${glowColor};
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        ">
+          <div style="transform:rotate(45deg); font-size:13px; line-height:1;">
+            ${emoji}
+          </div>
+        </div>
+      </div>
+    `,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -56],
+  });
+}
+
 export interface MapFilterParams {
   country?: string;
   state?: string;
@@ -414,7 +520,7 @@ export default function MapComponent({
 
           const icon =
             st.type === 'WELL'
-              ? WELL_ICON
+              ? createWellMapIcon(st.name, getWellRiskStatus(st))
               : st.type === 'IOT'
               ? IOT_ICON
               : st.type === 'AIR'

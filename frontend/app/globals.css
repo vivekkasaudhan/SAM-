@@ -228,6 +228,12 @@
   }
 }
 
+/* Custom Leaflet Map Pin with Well Name Pill */
+.leaflet-div-icon.custom-well-map-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -236,3 +242,4 @@
     scroll-behavior: auto !important;
   }
 }
+
