@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import (
     Column, Integer, Float, String, Boolean, DateTime,
-    ForeignKey, Text, Enum, JSON, create_engine
+    ForeignKey, Text, Enum, JSON, Index, create_engine
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
@@ -236,6 +236,7 @@ class Well(Base):
     warning_level_m = Column(Float, default=7.5)
     danger_level_m = Column(Float, default=8.5)
     total_depth_m = Column(Float, nullable=True)
+    monitoring_type = Column(String(50), default="SIMULATED", nullable=True, index=True)  # SIMULATED, PHYSICAL_SENSOR, MANUAL
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
@@ -275,6 +276,9 @@ class Sensor(Base):
 # 14. readings
 class Reading(Base):
     __tablename__ = "readings"
+    __table_args__ = (
+        Index("idx_readings_well_timestamp", "well_id", "timestamp"),
+    )
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     well_id = Column(String(50), ForeignKey("wells.id"), nullable=False, index=True)
@@ -353,12 +357,17 @@ def init_db():
                 ("city", "VARCHAR(100) NULL"),
                 ("created_by", "INTEGER NULL REFERENCES users(id)"),
                 ("total_depth_m", "FLOAT NULL"),
+                ("monitoring_type", "VARCHAR(50) DEFAULT 'SIMULATED'"),
             ]
             for col_name, col_def in new_well_cols:
                 if col_name not in well_cols:
                     conn.exec_driver_sql(f"ALTER TABLE wells ADD COLUMN {col_name} {col_def}")
 
-            # 3. Migrate users table columns (role)
+            # 3. Create performance indexes for time-series querying and scheduler filtering
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_readings_well_timestamp ON readings(well_id, timestamp)")
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS idx_wells_active_monitoring ON wells(is_active, monitoring_type)")
+
+            # 4. Migrate users table columns (role)
             user_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
             if "role" not in user_cols:
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'SUBADMIN'")

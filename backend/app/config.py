@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     initial_admin_email: str = "admin@aquasense.local"
     initial_admin_password: str = ""  # Set via INITIAL_ADMIN_PASSWORD environment variable
     
+    # Background Simulation Engine Scheduler
+    simulation_interval_seconds: int = 300  # Default 5 minutes (300 seconds)
+    simulation_enabled: bool = True
+    
     @property
     def get_cors_origins(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

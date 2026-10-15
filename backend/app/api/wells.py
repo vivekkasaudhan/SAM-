@@ -19,6 +19,7 @@ from app.services.geo_service import (
     get_state_variants,
     get_country_variants,
 )
+from app.services.well_history_service import WellHistoryService
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -61,10 +62,12 @@ class SensorOut(BaseModel):
 
 
 class ReadingOut(BaseModel):
-    id: int
+    id: Optional[int] = None
     well_id: str
-    sensor_id: Optional[str]
+    sensor_id: Optional[str] = None
     water_level_m: float
+    min_water_level_m: Optional[float] = None
+    max_water_level_m: Optional[float] = None
     ph: float
     tds_ppm: float
     turbidity_ntu: float
@@ -73,9 +76,26 @@ class ReadingOut(BaseModel):
     status: str
     source: str
     timestamp: datetime
+    reading_count: Optional[int] = 1
 
     class Config:
         from_attributes = True
+
+
+class HistoricalAnalysisResponse(BaseModel):
+    well_id: str
+    well_name: str
+    selected_range: str
+    start_date: str
+    end_date: str
+    aggregation: str
+    total_records: int
+    has_missing_data: bool
+    missing_periods: List[Dict[str, Any]] = []
+    data_source_summary: Dict[str, int] = {}
+    earliest_recorded_timestamp: Optional[str] = None
+    latest_recorded_timestamp: Optional[str] = None
+    readings: List[ReadingOut] = []
 
 
 class CreatorInfo(BaseModel):
@@ -102,6 +122,7 @@ class WellDetailOut(BaseModel):
     warning_level_m: float
     danger_level_m: float
     total_depth_m: Optional[float] = None
+    monitoring_type: Optional[str] = "SIMULATED"
     lithology_count: int = 0
     lithology_status: str = "NONE"
     total_logged_depth_m: float = 0.0
@@ -146,6 +167,7 @@ class CreateWellRequest(BaseModel):
     warning_level_m: Optional[float] = Field(7.5, ge=0.0, le=100.0)
     danger_level_m: Optional[float] = Field(8.5, ge=0.0, le=100.0)
     total_depth_m: Optional[float] = Field(None, ge=0.0, le=5000.0, description="Total drilled/borewell depth in metres")
+    monitoring_type: Optional[str] = Field("SIMULATED", max_length=50, description="SIMULATED | PHYSICAL_SENSOR | MANUAL")
     sensor_installed: bool = False
     sensor_type: Optional[str] = Field("Multi-Parameter Groundwater Sonde", max_length=100)
     sensor_model: Optional[str] = Field("AquaSense-Probe-v2", max_length=100)
@@ -170,6 +192,7 @@ class UpdateWellRequest(BaseModel):
     warning_level_m: Optional[float] = Field(None, ge=0.0, le=100.0)
     danger_level_m: Optional[float] = Field(None, ge=0.0, le=100.0)
     total_depth_m: Optional[float] = Field(None, ge=0.0, le=5000.0, description="Total drilled/borewell depth in metres")
+    monitoring_type: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
 
 
@@ -217,6 +240,7 @@ def _format_well_dict(w: Well, latest: Optional[Reading] = None) -> Dict[str, An
         "warning_level_m": w.warning_level_m,
         "danger_level_m": w.danger_level_m,
         "total_depth_m": getattr(w, "total_depth_m", None),
+        "monitoring_type": getattr(w, "monitoring_type", "SIMULATED") or "SIMULATED",
         "lithology_count": litho_count,
         "lithology_status": litho_status,
         "total_logged_depth_m": round(litho_max_depth, 2),
@@ -358,6 +382,7 @@ def create_well(
         warning_level_m=payload.warning_level_m or 7.5,
         danger_level_m=payload.danger_level_m or 8.5,
         total_depth_m=payload.total_depth_m,
+        monitoring_type=payload.monitoring_type or ("PHYSICAL_SENSOR" if payload.sensor_installed else "SIMULATED"),
         is_active=True,
         created_by=user.id,  # Set securely on backend from session
     )
@@ -446,6 +471,8 @@ def update_well(
         w.danger_level_m = payload.danger_level_m
     if payload.total_depth_m is not None:
         w.total_depth_m = payload.total_depth_m
+    if payload.monitoring_type is not None:
+        w.monitoring_type = payload.monitoring_type
     if payload.is_active is not None:
         w.is_active = payload.is_active
 
@@ -650,12 +677,38 @@ async def get_well(well_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/wells/{well_id}/readings", response_model=List[ReadingOut])
-def get_well_readings(well_id: str, limit: int = Query(50, ge=1, le=500), db: Session = Depends(get_db)):
-    """Get persistent historical readings for a specific well (sorted oldest to newest for charts)."""
+def get_well_readings(
+    well_id: str,
+    range_type: Optional[str] = Query(None, alias="range", description="recent | 1y | 2y | 3y | custom"),
+    start_date: Optional[datetime] = Query(None, description="ISO datetime for custom start"),
+    end_date: Optional[datetime] = Query(None, description="ISO datetime for custom end"),
+    aggregate: Optional[str] = Query("auto", description="auto | raw | hour | day"),
+    limit: int = Query(500, ge=1, le=5000),
+    db: Session = Depends(get_db),
+):
+    """
+    Get persistent historical readings for a specific well.
+    Supports time ranges (recent, 1y, 2y, 3y, custom) with SQL aggregation by day/hour.
+    Returns array of actual observations without fabricating data.
+    """
     w = db.query(Well).filter(Well.id == well_id).first()
     if not w:
         raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
 
+    # If explicit range or dates provided, route through WellHistoryService
+    if range_type is not None or start_date is not None or end_date is not None or (aggregate and aggregate != "auto"):
+        analysis = WellHistoryService.get_historical_analysis(
+            well_id=well_id,
+            range_type=range_type or "recent",
+            start_date=start_date,
+            end_date=end_date,
+            aggregate=aggregate or "auto",
+            limit=limit,
+            db=db,
+        )
+        return [ReadingOut.model_validate(r) for r in analysis.get("readings", [])]
+
+    # Default legacy behavior
     readings = (
         db.query(Reading)
         .filter(Reading.well_id == well_id)
@@ -664,8 +717,13 @@ def get_well_readings(well_id: str, limit: int = Query(50, ge=1, le=500), db: Se
         .all()
     )
 
-    # Auto-backfill past 24-hr deterministic sequence if fewer than 12 readings exist
-    if len(readings) < 12 and len(readings) > 0:
+    # Auto-backfill past 24-hr deterministic sequence ONLY if fewer than 12 readings exist and well is SIMULATED
+    if (
+        len(readings) < 12
+        and len(readings) > 0
+        and (getattr(w, "monitoring_type", None) or "SIMULATED").upper() == "SIMULATED"
+        and not any(getattr(s, "api_key_hash", None) for s in w.sensors)
+    ):
         import math
         from datetime import timedelta, timezone
         baseline_r = readings[0]
@@ -700,3 +758,42 @@ def get_well_readings(well_id: str, limit: int = Query(50, ge=1, le=500), db: Se
     # Sort ascending so charts plot from oldest -> newest
     sorted_readings = sorted(readings, key=lambda r: r.timestamp)
     return [ReadingOut.model_validate(r) for r in sorted_readings]
+
+
+@router.get("/wells/{well_id}/history-analysis", response_model=HistoricalAnalysisResponse)
+def get_well_history_analysis(
+    well_id: str,
+    range_type: str = Query("recent", alias="range", description="recent | 1y | 2y | 3y | custom"),
+    start_date: Optional[datetime] = Query(None, description="ISO datetime for custom start"),
+    end_date: Optional[datetime] = Query(None, description="ISO datetime for custom end"),
+    aggregate: Optional[str] = Query("auto", description="auto | raw | hour | day"),
+    limit: int = Query(1000, ge=1, le=5000),
+    db: Session = Depends(get_db),
+):
+    """
+    Comprehensive historical analysis endpoint for a monitoring well.
+    - Zero fabrication: queries only actual recorded observations.
+    - Aggregates by day or hour using SQL strftime envelopes.
+    - Detects historical unrecorded periods and gaps.
+    - Accurately details data sources (SIMULATED vs LIVE).
+    """
+    w = db.query(Well).filter(Well.id == well_id).first()
+    if not w:
+        raise HTTPException(status_code=404, detail=f"Well {well_id} not found")
+
+    analysis = WellHistoryService.get_historical_analysis(
+        well_id=well_id,
+        range_type=range_type,
+        start_date=start_date,
+        end_date=end_date,
+        aggregate=aggregate,
+        limit=limit,
+        db=db,
+    )
+
+    if "error" in analysis:
+        raise HTTPException(status_code=404, detail=analysis["error"])
+
+    # Cast readings to ReadingOut schema
+    analysis["readings"] = [ReadingOut.model_validate(r) for r in analysis.get("readings", [])]
+    return analysis

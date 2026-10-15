@@ -112,6 +112,7 @@ def seed_demo_wells(force: bool = False) -> bool:
                     location_description=well_data["location_description"],
                     warning_level_m=well_data["warning_level_m"],
                     danger_level_m=well_data["danger_level_m"],
+                    monitoring_type="SIMULATED",
                     is_active=True,
                 )
                 session.add(new_well)
@@ -146,11 +147,12 @@ def seed_demo_wells(force: bool = False) -> bool:
                 wells_created += 1
                 readings_created += 1
             else:
-                # Update existing demo well's geographic metadata
+                # Update existing demo well's geographic metadata and monitoring type
                 existing_well.country = well_data.get("country", "India")
                 existing_well.state = well_data.get("state")
                 existing_well.district = well_data.get("district")
                 existing_well.city = well_data.get("city")
+                existing_well.monitoring_type = "SIMULATED"
                 sensor_info = well_data["sensor"]
                 existing_sensor = (
                     session.query(Sensor)

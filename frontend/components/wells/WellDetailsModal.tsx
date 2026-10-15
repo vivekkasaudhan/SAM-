@@ -37,10 +37,12 @@ import {
   Legend,
 } from 'recharts';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { wellService, authService, isSubadmin } from '@/services/api';
+import { wellService, authService, isSubadmin, HistoricalAnalysisResponse } from '@/services/api';
 import { WellWaterLevel } from '@/components/visualization/WellWaterLevel';
 import { LithologySection } from '@/components/lithology/LithologySection';
 import { Skeleton } from '@/components/ui/skeleton';
+
+export type HistoryRange = 'recent' | '1y' | '2y' | '3y' | 'custom';
 
 interface WellDetailsModalProps {
   wellId: string | null;
@@ -62,27 +64,66 @@ export function WellDetailsModal({
   const [mainModalTab, setMainModalTab] = useState<'telemetry' | 'lithology'>('telemetry');
   const [activeHistoryTab, setActiveHistoryTab] = useState<'water-level' | 'water-quality'>('water-level');
 
-  const fetchWellData = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [wellData, historyData] = await Promise.all([
-        wellService.getWell(id),
-        wellService.getWellReadings(id, 48),
-      ]);
-      setWell(wellData);
-      // Sort oldest to newest for Recharts display
-      const sortedHistory = (historyData || []).slice().sort((a: any, b: any) => {
-        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-      });
-      setReadings(sortedHistory);
-    } catch (err: any) {
-      console.error('Failed to load well details:', err);
-      setError(err?.response?.data?.detail || 'Failed to retrieve well telemetry details.');
-    } finally {
-      setLoading(false);
+  // Task 2: Historical Water-Level Analysis state
+  const [historyRange, setHistoryRange] = useState<HistoryRange>('recent');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [historyAnalysis, setHistoryAnalysis] = useState<HistoricalAnalysisResponse | null>(null);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+
+  const fetchHistoryAnalysis = useCallback(
+    async (id: string, range: HistoryRange, start?: string, end?: string) => {
+      setHistoryLoading(true);
+      try {
+        const analysis = await wellService.getWellHistoryAnalysis(id, {
+          range,
+          start_date: range === 'custom' && start ? new Date(start).toISOString() : undefined,
+          end_date: range === 'custom' && end ? new Date(end).toISOString() : undefined,
+        });
+        setHistoryAnalysis(analysis);
+        const sorted = (analysis.readings || []).slice().sort((a: any, b: any) => {
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
+        setReadings(sorted);
+      } catch (err: any) {
+        console.error('Failed to load historical analysis:', err);
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    []
+  );
+
+  const fetchWellData = useCallback(
+    async (id: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const wellData = await wellService.getWell(id);
+        setWell(wellData);
+        await fetchHistoryAnalysis(id, historyRange, customStartDate, customEndDate);
+      } catch (err: any) {
+        console.error('Failed to load well details:', err);
+        setError(err?.response?.data?.detail || 'Failed to retrieve well telemetry details.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchHistoryAnalysis, historyRange, customStartDate, customEndDate]
+  );
+
+  const handleRangeChange = (newRange: HistoryRange) => {
+    setHistoryRange(newRange);
+    if (well?.id) {
+      fetchHistoryAnalysis(well.id, newRange, customStartDate, customEndDate);
     }
-  }, []);
+  };
+
+  const handleApplyCustomDate = () => {
+    if (well?.id && customStartDate && customEndDate) {
+      fetchHistoryAnalysis(well.id, 'custom', customStartDate, customEndDate);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && wellId) {
@@ -91,6 +132,8 @@ export function WellDetailsModal({
     } else {
       setWell(null);
       setReadings([]);
+      setHistoryAnalysis(null);
+      setHistoryRange('recent');
     }
   }, [isOpen, wellId, fetchWellData]);
 
@@ -138,7 +181,11 @@ export function WellDetailsModal({
 
   const formatTickTime = (ts: string) => {
     try {
-      return format(parseISO(ts.replace('Z', '')), 'HH:mm');
+      const d = parseISO(ts.replace('Z', ''));
+      if (historyRange === 'recent') return format(d, 'HH:mm');
+      if (historyRange === '1y') return format(d, 'MMM dd');
+      if (historyRange === '2y' || historyRange === '3y') return format(d, 'MMM yyyy');
+      return format(d, 'MMM dd, yy');
     } catch {
       return ts;
     }
@@ -470,6 +517,7 @@ export function WellDetailsModal({
 
                 {/* ── Middle Section: Historical Trends (Recharts) ─────────── */}
                 <div className="p-6 rounded-3xl bg-muted/20 dark:bg-navy-950/30 border border-border/60 dark:border-navy-800 space-y-4">
+                  {/* Title & Chart Mode Toggle */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-500">
@@ -477,10 +525,10 @@ export function WellDetailsModal({
                       </div>
                       <div>
                         <h3 className="font-bold text-sm text-foreground">
-                          Persistent Telemetry Time-Series (24-Hour Observation)
+                          Persistent Telemetry Time-Series & Historical Analysis
                         </h3>
                         <p className="text-[11px] text-muted-foreground">
-                          Historical sensor readings recorded for well {well.id}
+                          Real database records query for well {well.id}
                         </p>
                       </div>
                     </div>
@@ -510,9 +558,128 @@ export function WellDetailsModal({
                     </div>
                   </div>
 
-                  {readings.length === 0 ? (
-                    <div className="h-64 flex items-center justify-center border border-dashed rounded-2xl text-xs text-muted-foreground">
-                      No historical readings logged for this station yet.
+                  {/* Range Selector Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1 border-t border-border/40">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground mr-1 flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> Range:
+                      </span>
+                      {(
+                        [
+                          { id: 'recent', label: 'Live / Recent' },
+                          { id: '1y', label: 'Last 1 Year' },
+                          { id: '2y', label: 'Last 2 Years' },
+                          { id: '3y', label: 'Last 3 Years' },
+                          { id: 'custom', label: 'Custom Range' },
+                        ] as const
+                      ).map((btn) => (
+                        <button
+                          key={btn.id}
+                          type="button"
+                          onClick={() => handleRangeChange(btn.id)}
+                          className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors ${
+                            historyRange === btn.id
+                              ? 'bg-cyan-500 text-white shadow-xs'
+                              : 'bg-card dark:bg-navy-900 border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                          }`}
+                        >
+                          {btn.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Metadata & Provenance Tags */}
+                    {historyAnalysis && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        <span className="px-2 py-0.5 rounded-md bg-muted/60 dark:bg-navy-900 border border-border/60 text-foreground font-mono">
+                          {historyAnalysis.total_records} records
+                        </span>
+                        {historyAnalysis.data_source_summary?.SIMULATED != null && historyAnalysis.data_source_summary.SIMULATED > 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium">
+                            Simulated: {historyAnalysis.data_source_summary.SIMULATED}
+                          </span>
+                        )}
+                        {historyAnalysis.data_source_summary?.LIVE != null && historyAnalysis.data_source_summary.LIVE > 0 && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
+                            Physical Sensor: {historyAnalysis.data_source_summary.LIVE}
+                          </span>
+                        )}
+                        {historyAnalysis.aggregation !== 'raw' && (
+                          <span className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-medium capitalize">
+                            {historyAnalysis.aggregation} Aggregation
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Custom Date Range Picker */}
+                  {historyRange === 'custom' && (
+                    <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-card dark:bg-navy-900 border border-border/60 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">From:</span>
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="px-2.5 py-1 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">To:</span>
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="px-2.5 py-1 rounded-lg bg-background border border-border text-foreground font-mono focus:outline-hidden focus:ring-1 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyCustomDate}
+                        disabled={!customStartDate || !customEndDate || historyLoading}
+                        className="px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white font-medium transition-colors"
+                      >
+                        Apply Filter
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Missing Telemetry Warning Banner (No Fabrication Guarantee) */}
+                  {historyAnalysis?.has_missing_data && historyAnalysis.missing_periods && historyAnalysis.missing_periods.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 space-y-1 text-xs">
+                      <div className="flex items-center gap-2 font-bold">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                        <span>Historical Telemetry Notice</span>
+                      </div>
+                      <div className="pl-6 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+                        {historyAnalysis.missing_periods.map((gap, idx) => (
+                          <p key={idx}>
+                            • No database records exist between <strong className="text-foreground">{formatTimestamp(gap.from)}</strong> and <strong className="text-foreground">{formatTimestamp(gap.to)}</strong> ({gap.reason}).
+                          </p>
+                        ))}
+                        <p className="text-foreground/90 font-medium pt-0.5">
+                          AquaSense Data Integrity: Only verified records from the database are plotted. No synthetic observations have been fabricated to fill unmonitored historical gaps.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chart Loading or Content */}
+                  {historyLoading ? (
+                    <div className="h-72 flex flex-col items-center justify-center border border-dashed rounded-2xl text-xs text-muted-foreground space-y-2">
+                      <RefreshCw className="h-5 w-5 animate-spin text-cyan-500" />
+                      <span>Querying persistent time-series telemetry...</span>
+                    </div>
+                  ) : readings.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center border border-dashed rounded-2xl text-xs text-muted-foreground space-y-1">
+                      <Info className="h-5 w-5 text-muted-foreground/60" />
+                      <p>No historical telemetry logged for this period.</p>
+                      {historyAnalysis?.has_missing_data && (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                          This station has no recorded sensor observations prior to its initial commissioning date.
+                        </p>
+                      )}
                     </div>
                   ) : activeHistoryTab === 'water-level' ? (
                     /* Water Stage Chart */
@@ -545,13 +712,39 @@ export function WellDetailsModal({
                           <Tooltip
                             content={({ active, payload, label }) => {
                               if (!active || !payload?.length) return null;
+                              const pData = payload[0].payload;
+                              const isSim = pData.status === 'SIMULATED' || (!pData.status && well.monitoring_type !== 'PHYSICAL_SENSOR');
                               return (
-                                <div className="p-3 rounded-xl bg-card border border-border shadow-xl text-xs font-mono">
-                                  <div className="font-bold text-foreground mb-1">
+                                <div className="p-3 rounded-xl bg-card border border-border shadow-xl text-xs font-mono space-y-1">
+                                  <div className="font-bold text-foreground">
                                     {formatTimestamp(label)}
                                   </div>
                                   <div className="text-cyan-500 font-bold">
-                                    Water Stage: {Number(payload[0].value).toFixed(2)} m
+                                    Water Stage: {Number(pData.water_level_m).toFixed(2)} m
+                                  </div>
+                                  {pData.min_water_level_m != null && pData.max_water_level_m != null && (
+                                    <div className="text-[11px] text-muted-foreground flex justify-between gap-3">
+                                      <span>Daily Min/Max:</span>
+                                      <span className="font-bold text-foreground">
+                                        {Number(pData.min_water_level_m).toFixed(2)}m – {Number(pData.max_water_level_m).toFixed(2)}m
+                                      </span>
+                                    </div>
+                                  )}
+                                  {pData.reading_count != null && (
+                                    <div className="text-[10px] text-muted-foreground">
+                                      Aggregated from {pData.reading_count} samples
+                                    </div>
+                                  )}
+                                  <div className="pt-1">
+                                    <span
+                                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold ${
+                                        isSim
+                                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                      }`}
+                                    >
+                                      {isSim ? 'Simulated Observation' : 'Live Physical Telemetry'}
+                                    </span>
                                   </div>
                                 </div>
                               );

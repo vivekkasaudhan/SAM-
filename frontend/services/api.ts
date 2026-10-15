@@ -91,6 +91,47 @@ export const stationService = {
   },
 };
 
+export interface MissingPeriod {
+  from: string;
+  to: string;
+  type: string;
+  duration_days?: number;
+  duration_hours?: number;
+  reason: string;
+}
+
+export interface HistoricalAnalysisResponse {
+  well_id: string;
+  well_name: string;
+  selected_range: string;
+  start_date: string;
+  end_date: string;
+  aggregation: string;
+  total_records: number;
+  has_missing_data: boolean;
+  missing_periods: MissingPeriod[];
+  data_source_summary: Record<string, number>;
+  earliest_recorded_timestamp?: string | null;
+  latest_recorded_timestamp?: string | null;
+  readings: Array<{
+    id?: number | null;
+    well_id: string;
+    sensor_id?: string | null;
+    water_level_m: number;
+    min_water_level_m?: number | null;
+    max_water_level_m?: number | null;
+    ph: number;
+    tds_ppm: number;
+    turbidity_ntu: number;
+    dissolved_oxygen_mg_l: number;
+    temperature_c: number;
+    status: string;
+    source: string;
+    timestamp: string;
+    reading_count?: number;
+  }>;
+}
+
 export const wellService = {
   async getWells(filters?: {
     country?: string;
@@ -108,8 +149,33 @@ export const wellService = {
     const response = await api.get(`/api/wells/${id}`);
     return response.data;
   },
-  async getWellReadings(id: string, limit: number = 50) {
-    const response = await api.get(`/api/wells/${id}/readings`, { params: { limit } });
+  async getWellReadings(
+    id: string,
+    params?: number | {
+      limit?: number;
+      range?: 'recent' | '1y' | '2y' | '3y' | 'custom';
+      start_date?: string;
+      end_date?: string;
+      aggregate?: 'auto' | 'raw' | 'hour' | 'day';
+    }
+  ) {
+    const queryParams = typeof params === 'number' ? { limit: params } : (params || { limit: 50 });
+    const response = await api.get(`/api/wells/${id}/readings`, { params: queryParams });
+    return response.data;
+  },
+  async getWellHistoryAnalysis(
+    id: string,
+    params?: {
+      range?: 'recent' | '1y' | '2y' | '3y' | 'custom';
+      start_date?: string;
+      end_date?: string;
+      aggregate?: 'auto' | 'raw' | 'hour' | 'day';
+      limit?: number;
+    }
+  ): Promise<HistoricalAnalysisResponse> {
+    const response = await api.get<HistoricalAnalysisResponse>(`/api/wells/${id}/history-analysis`, {
+      params,
+    });
     return response.data;
   },
   async createWell(data: any) {
