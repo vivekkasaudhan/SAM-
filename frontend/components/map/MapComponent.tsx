@@ -65,24 +65,18 @@ export function getWellRiskStatus(st: MonitoringStation): 'DANGER' | 'WARNING' |
 export function createWellMapIcon(name: string, riskStatus: 'DANGER' | 'WARNING' | 'NORMAL') {
   let pinColor = '#2563eb'; // BLUE for Normal level
   let glowColor = 'rgba(37, 99, 235, 0.45)';
-  let badgeBorder = 'rgba(59, 130, 246, 0.7)';
-  let badgeBg = 'rgba(15, 23, 42, 0.92)';
-  let dotColor = '#38bdf8';
+  let dotColor = '#2563eb';
   let emoji = '🚰';
 
   if (riskStatus === 'DANGER') {
     pinColor = '#ef4444'; // RED for Danger level
     glowColor = 'rgba(239, 68, 68, 0.55)';
-    badgeBorder = 'rgba(239, 68, 68, 0.8)';
-    badgeBg = 'rgba(69, 10, 10, 0.94)';
-    dotColor = '#f87171';
+    dotColor = '#ef4444';
     emoji = '🚨';
   } else if (riskStatus === 'WARNING') {
     pinColor = '#eab308'; // YELLOW for Warning level
     glowColor = 'rgba(234, 179, 8, 0.55)';
-    badgeBorder = 'rgba(234, 179, 8, 0.8)';
-    badgeBg = 'rgba(66, 32, 6, 0.94)';
-    dotColor = '#facc15';
+    dotColor = '#eab308';
     emoji = '⚠️';
   }
 
@@ -100,33 +94,29 @@ export function createWellMapIcon(name: string, riskStatus: 'DANGER' | 'WARNING'
         cursor:pointer;
         user-select:none;
       ">
-        <!-- Well Name Label Pill Above Pointer -->
+        <!-- Well Name Label Above Pointer (No Background Color) -->
         <div style="
-          background:${badgeBg};
-          backdrop-filter:blur(6px);
-          color:white;
+          background:transparent;
+          color:#0f172a;
           font-size:11px;
-          font-weight:700;
+          font-weight:800;
           font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-          padding:2.5px 8px;
-          border-radius:12px;
-          border:1.5px solid ${badgeBorder};
           white-space:nowrap;
-          box-shadow:0 3px 10px rgba(0,0,0,0.5), 0 0 8px ${glowColor};
-          margin-bottom:4px;
+          text-shadow:0 0 3px #ffffff, 0 0 5px #ffffff, -1px -1px 0 #ffffff, 1px -1px 0 #ffffff, -1px 1px 0 #ffffff, 1px 1px 0 #ffffff;
+          margin-bottom:3px;
           max-width:180px;
           overflow:hidden;
           text-overflow:ellipsis;
           display:flex;
           align-items:center;
-          gap:4.5px;
+          gap:4px;
         ">
           <span style="
             width:6px;
             height:6px;
             border-radius:50%;
             background:${dotColor};
-            box-shadow:0 0 6px ${dotColor};
+            box-shadow:0 0 2px rgba(0,0,0,0.5);
             flex-shrink:0;
             display:inline-block;
           "></span>
