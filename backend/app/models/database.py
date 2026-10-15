@@ -235,6 +235,7 @@ class Well(Base):
     location_description = Column(String(255), nullable=True)
     warning_level_m = Column(Float, default=7.5)
     danger_level_m = Column(Float, default=8.5)
+    total_depth_m = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
@@ -242,6 +243,12 @@ class Well(Base):
     creator = relationship("User", back_populates="wells")
     sensors = relationship("Sensor", back_populates="well", cascade="all, delete-orphan")
     readings = relationship("Reading", back_populates="well", cascade="all, delete-orphan")
+    lithology_layers = relationship(
+        "LithologyLayer",
+        back_populates="well",
+        cascade="all, delete-orphan",
+        order_by="LithologyLayer.from_depth_m",
+    )
 
 
 # 13. sensors
@@ -286,6 +293,33 @@ class Reading(Base):
     sensor = relationship("Sensor", back_populates="readings")
 
 
+# 15. lithology_layers (subsurface geological logging & stratigraphy)
+class LithologyLayer(Base):
+    __tablename__ = "lithology_layers"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    well_id = Column(String(50), ForeignKey("wells.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_depth_m = Column(Float, nullable=False, index=True)
+    to_depth_m = Column(Float, nullable=False, index=True)
+    material_type = Column(String(50), nullable=False, index=True)  # topsoil, clay, sand, gravel, silt, sandstone, limestone, granite, weathered_rock, fractured_rock, other
+    description = Column(Text, nullable=True)
+    color_code = Column(String(20), nullable=True)
+    observed_properties = Column(JSON, nullable=True)
+    data_source = Column(String(50), default="CORE_SAMPLE", nullable=False)  # CORE_SAMPLE, DRILL_CUTTINGS, GEOPHYSICAL_LOG, HISTORICAL_RECORD, illustrative_demo
+    confidence_level = Column(String(20), default="HIGH", nullable=False)  # HIGH, MEDIUM, LOW
+    aquifer_indicator = Column(Boolean, default=False, nullable=True)
+    source_reference = Column(String(255), nullable=True)
+    attachment_url = Column(String(500), nullable=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    updated_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    well = relationship("Well", back_populates="lithology_layers")
+    creator = relationship("User", foreign_keys=[created_by_user_id])
+    updater = relationship("User", foreign_keys=[updated_by_user_id])
+
+
 # Database Engine and Session Factory
 DATABASE_URL = "sqlite:///./aquasense.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -310,7 +344,7 @@ def init_db():
                 if col_name not in sensor_cols:
                     conn.exec_driver_sql(f"ALTER TABLE sensors ADD COLUMN {col_name} {col_def}")
 
-            # 2. Migrate wells table columns (country, state, district, city, created_by)
+            # 2. Migrate wells table columns (country, state, district, city, created_by, total_depth_m)
             well_cols = [c[1] for c in conn.exec_driver_sql("PRAGMA table_info(wells)").fetchall()]
             new_well_cols = [
                 ("country", "VARCHAR(100) DEFAULT 'India'"),
@@ -318,6 +352,7 @@ def init_db():
                 ("district", "VARCHAR(100) NULL"),
                 ("city", "VARCHAR(100) NULL"),
                 ("created_by", "INTEGER NULL REFERENCES users(id)"),
+                ("total_depth_m", "FLOAT NULL"),
             ]
             for col_name, col_def in new_well_cols:
                 if col_name not in well_cols:

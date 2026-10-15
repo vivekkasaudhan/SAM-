@@ -19,6 +19,7 @@ from app.api import (
     auth,
     sensors,
     geo,
+    lithology,
 )
 from app.models.database import init_db
 from app.seed import seed_demo_wells
@@ -54,6 +55,7 @@ app.include_router(environment.router, prefix="/api", tags=["Environment"])
 app.include_router(weather.router, prefix="/api", tags=["Weather"])
 app.include_router(water.router, prefix="/api", tags=["Water"])
 app.include_router(wells.router, prefix="/api", tags=["Wells"])
+app.include_router(lithology.router, prefix="/api", tags=["Lithology & Stratigraphy"])
 app.include_router(air_quality.router, prefix="/api", tags=["Air Quality"])
 app.include_router(risk.router, prefix="/api", tags=["Risk"])
 app.include_router(location.router, prefix="/api", tags=["Location"])
