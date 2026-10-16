@@ -141,7 +141,7 @@ function LocationHeader({
           {/* Eyebrow & Breadcrumbs */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-cyan-400 border border-brand-500/20">
-              <Globe className="h-3 w-3" /> AquaSense Node
+              <Globe className="h-3 w-3" /> SAM Node
             </span>
             <span className="text-muted-foreground/40">•</span>
             <span className="font-medium text-foreground/80">{breadcrumbs.join(' › ')}</span>
@@ -668,9 +668,9 @@ export default function Home() {
         <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-brand-600 via-cyan-500 to-teal-400 flex items-center justify-center text-white font-black text-xs shadow-xs">
-              A
+              S
             </div>
-            <span className="font-bold text-foreground text-sm tracking-tight">AquaSense</span>
+            <span className="font-bold text-foreground text-sm tracking-tight">SAM</span>
             <span className="text-muted-foreground/50">|</span>
             <span>Enterprise Environmental Intelligence Platform</span>
           </div>

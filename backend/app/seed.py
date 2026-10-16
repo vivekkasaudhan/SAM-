@@ -33,7 +33,7 @@ DEMO_WELLS = [
         "sensor": {
             "id": "SENSOR-WELL-01",
             "sensor_type": "Multi-Parameter Groundwater Sonde",
-            "model": "AquaSense-Pro-Multi",
+            "model": "SAM-Pro-Multi",
         },
         "reading": {
             "water_level_m": 6.8,
@@ -61,7 +61,7 @@ DEMO_WELLS = [
         "sensor": {
             "id": "SENSOR-WELL-02",
             "sensor_type": "Multi-Parameter Groundwater Sonde",
-            "model": "AquaSense-Pro-Multi",
+            "model": "SAM-Pro-Multi",
         },
         "reading": {
             "water_level_m": 8.1,

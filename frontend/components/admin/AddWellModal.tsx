@@ -59,7 +59,7 @@ export function AddWellModal({ isOpen, onClose, onWellCreated }: AddWellModalPro
   // 4. Sensor Telemetry Configuration
   const [sensorInstalled, setSensorInstalled] = useState(true);
   const [sensorType, setSensorType] = useState('Multi-Parameter Groundwater Sonde');
-  const [sensorModel, setSensorModel] = useState('AquaSense-Probe-v2');
+  const [sensorModel, setSensorModel] = useState('SAM-Probe-v2');
 
   // 5. Initial Baseline Readings (Optional)
   const [waterLevel, setWaterLevel] = useState<string>('6.5');
@@ -452,7 +452,7 @@ export function AddWellModal({ isOpen, onClose, onWellCreated }: AddWellModalPro
                     type="text"
                     value={sensorModel}
                     onChange={(e) => setSensorModel(e.target.value)}
-                    placeholder="AquaSense-Probe-v2"
+                    placeholder="SAM-Probe-v2"
                     className="w-full px-3.5 py-2.5 rounded-xl border bg-background text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>

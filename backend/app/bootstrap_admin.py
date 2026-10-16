@@ -51,7 +51,7 @@ def bootstrap_admin(username: str = None, email: str = None, password: str = Non
             new_user = User(
                 username=username,
                 email=email,
-                full_name="AquaSense Platform Administrator",
+                full_name="SAM Platform Administrator",
                 hashed_password=hashed,
                 role="MAIN_ADMIN",
                 is_active=True,

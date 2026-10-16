@@ -82,7 +82,7 @@ export default function AdminSignUpPage() {
             <Droplet className="h-8 w-8 fill-current" />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            AquaSense Admin Sign Up
+            SAM Admin Sign Up
           </h1>
           <p className="text-sm text-muted-foreground">
             Create an administrator account to manage groundwater wells and sensors

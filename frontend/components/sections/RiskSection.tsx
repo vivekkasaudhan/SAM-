@@ -366,9 +366,9 @@ export function RiskSection({ risk }: RiskSectionProps) {
 
       {/* Methodology note */}
       <div className="p-4 rounded-xl bg-muted/50 border text-sm">
-        <div className="font-semibold mb-1">About AquaSense Risk & Anomaly System</div>
+        <div className="font-semibold mb-1">About SAM Risk & Anomaly System</div>
         <div className="text-muted-foreground text-xs leading-relaxed">
-          AquaSense continuously couples hydrological telemetry, open weather forecasts, and time-series
+          SAM continuously couples hydrological telemetry, open weather forecasts, and time-series
           autoregressive trajectories to detect early warning signs. Observed alerts reflect empirical probe
           and sensor violations, while predictive alerts provide advance situational notice without guaranteeing
           impending crisis.

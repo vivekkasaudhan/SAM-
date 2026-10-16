@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
             <Droplet className="h-8 w-8 fill-current" />
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            AquaSense Admin Portal
+            SAM Admin Portal
           </h1>
           <p className="text-sm text-muted-foreground">
             Sign in with authorized administrator credentials to manage monitoring wells

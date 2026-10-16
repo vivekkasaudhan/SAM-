@@ -19,7 +19,7 @@ const api: AxiosInstance = axios.create({
 // Interceptor to inject bearer token from localStorage if present
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('aquasense_token');
+    const token = localStorage.getItem('sam_token') || localStorage.getItem('aquasense_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -357,6 +357,8 @@ export const authService = {
       password,
     });
     if (response.data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('sam_token', response.data.token);
+      localStorage.setItem('sam_user', JSON.stringify(response.data.user));
       localStorage.setItem('aquasense_token', response.data.token);
       localStorage.setItem('aquasense_user', JSON.stringify(response.data.user));
     }
@@ -370,6 +372,8 @@ export const authService = {
       full_name,
     });
     if (response.data?.token && typeof window !== 'undefined') {
+      localStorage.setItem('sam_token', response.data.token);
+      localStorage.setItem('sam_user', JSON.stringify(response.data.user));
       localStorage.setItem('aquasense_token', response.data.token);
       localStorage.setItem('aquasense_user', JSON.stringify(response.data.user));
     }
@@ -380,6 +384,8 @@ export const authService = {
       await api.post('/api/auth/logout');
     } finally {
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('sam_token');
+        localStorage.removeItem('sam_user');
         localStorage.removeItem('aquasense_token');
         localStorage.removeItem('aquasense_user');
       }
@@ -391,7 +397,7 @@ export const authService = {
   },
   getCurrentUser() {
     if (typeof window === 'undefined') return null;
-    const raw = localStorage.getItem('aquasense_user');
+    const raw = localStorage.getItem('sam_user') || localStorage.getItem('aquasense_user');
     try {
       return raw ? JSON.parse(raw) : null;
     } catch {
@@ -400,7 +406,7 @@ export const authService = {
   },
   isAuthenticated(): boolean {
     if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('aquasense_token');
+    return !!(localStorage.getItem('sam_token') || localStorage.getItem('aquasense_token'));
   },
   async getSubadmins() {
     const response = await api.get('/api/auth/subadmins');

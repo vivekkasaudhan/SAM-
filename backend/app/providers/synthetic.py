@@ -25,7 +25,7 @@ class SyntheticDataProvider(EnvironmentalDataProvider):
             data_source=DataSourceInfo(
                 status=DataStatus.SIMULATED,
                 source=DataSource.SYNTHETIC,
-                source_label="AquaSense Simulation Engine (Synthetic)",
+                source_label="SAM Simulation Engine (Synthetic)",
             ),
             **w,
         )
@@ -57,7 +57,7 @@ class SyntheticDataProvider(EnvironmentalDataProvider):
             data_source=DataSourceInfo(
                 status=DataStatus.SIMULATED,
                 source=DataSource.SYNTHETIC,
-                source_label="AquaSense Simulation Engine (No station nearby)",
+                source_label="SAM Simulation Engine (No station nearby)",
             ),
             water_level=round(level, 2),
             trend=trend,
@@ -84,7 +84,7 @@ class SyntheticDataProvider(EnvironmentalDataProvider):
             data_source=DataSourceInfo(
                 status=DataStatus.SIMULATED,
                 source=DataSource.SYNTHETIC,
-                source_label="AquaSense Simulation Engine (No station nearby)",
+                source_label="SAM Simulation Engine (No station nearby)",
             ),
             electrical_conductivity=ec,
             category=category,
@@ -103,7 +103,7 @@ class SyntheticDataProvider(EnvironmentalDataProvider):
             data_source=DataSourceInfo(
                 status=DataStatus.SIMULATED,
                 source=DataSource.SYNTHETIC,
-                source_label="AquaSense Simulation Engine (No station nearby)",
+                source_label="SAM Simulation Engine (No station nearby)",
             ),
             **aq,
         )

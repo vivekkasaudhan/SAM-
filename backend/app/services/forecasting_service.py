@@ -47,7 +47,7 @@ class GroundwaterBaselineModel:
     5. Uncertainty bands (95% CI) expanding with forecast horizon: sigma(h) = sigma_res * sqrt(1 + 0.12*h).
     """
 
-    MODEL_NAME = "AquaSense-HydrologicalBaseline-v1"
+    MODEL_NAME = "SAM-HydrologicalBaseline-v1"
     MODEL_VERSION = "1.0.0"
 
     def __init__(self):
@@ -383,7 +383,7 @@ class GroundwaterForecastingService:
                 readings = simulated_readings if simulated_readings else raw_readings
                 is_demo = True
                 forecast_type = "DEMO_SIMULATED"
-                data_source_label = "AquaSense Hydrological Simulation Engine"
+                data_source_label = "SAM Hydrological Simulation Engine"
                 disclaimer = "DEMO FORECAST — BASED ON SIMULATED DATA. For demonstration and workflow validation purposes only. Does not establish real-world hydrogeological forecasting accuracy."
 
             # 1. Check Data Sufficiency
@@ -563,7 +563,7 @@ class GroundwaterForecastingService:
                     # Running in existing event loop: use synchronous synthetic or schedule
                     engine = SyntheticEngine(lat, lon)
                     rain = [round(max(0.0, engine.rng.random() * 4.5), 1) for _ in range(horizon_days)]
-                    return rain, "AquaSense Hydrological Weather Simulation"
+                    return rain, "SAM Hydrological Weather Simulation"
                 else:
                     data = loop.run_until_complete(weather_provider.fetch_open_meteo(lat, lon))
             except Exception:
@@ -577,6 +577,6 @@ class GroundwaterForecastingService:
             # Fallback to realistic deterministic simulation
             engine = SyntheticEngine(lat, lon)
             rain = [round(max(0.0, (engine.rng.random() - 0.3) * 6.0), 1) for _ in range(horizon_days)]
-            return rain, "AquaSense Hydrological Weather Simulation (Station Proximity)"
+            return rain, "SAM Hydrological Weather Simulation (Station Proximity)"
         except Exception:
             return [0.0] * horizon_days, "Standard Climatological Baseline"

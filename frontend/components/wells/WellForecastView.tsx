@@ -357,7 +357,7 @@ export function WellForecastView({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed pl-7">
-            AquaSense Data Integrity Guarantee: We do not invent synthetic predictions when empirical observations are insufficient.
+            SAM Data Integrity Guarantee: We do not invent synthetic predictions when empirical observations are insufficient.
           </p>
 
           <div className="p-3.5 rounded-xl bg-card dark:bg-navy-900 border border-border/60 text-xs font-mono space-y-1.5 text-foreground">

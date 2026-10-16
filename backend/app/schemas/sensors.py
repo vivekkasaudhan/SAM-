@@ -37,7 +37,7 @@ class SensorRegisterRequest(BaseModel):
     id: str = Field(..., min_length=2, max_length=50, description="Desired unique sensor hardware ID")
     well_id: str = Field(..., min_length=2, max_length=50, description="Associated registered well ID")
     sensor_type: str = Field("Multi-Parameter Groundwater Sonde", max_length=100)
-    model: str = Field("AquaSense-IoT-ESP32", max_length=100)
+    model: str = Field("SAM-IoT-ESP32", max_length=100)
     measurement_parameter: str = Field("water_level,ph,tds,turbidity,dissolved_oxygen,temperature", max_length=255)
     units: str = Field("m,pH,ppm,NTU,mg/L,°C", max_length=100)
     is_installed: bool = True

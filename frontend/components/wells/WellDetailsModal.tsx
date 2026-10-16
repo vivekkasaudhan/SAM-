@@ -690,7 +690,7 @@ export function WellDetailsModal({
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">
-                          No physical IoT probe is installed at this station. Readings are synthesized by the AquaSense Hydrological Simulation Engine.
+                          No physical IoT probe is installed at this station. Readings are synthesized by the SAM Hydrological Simulation Engine.
                         </p>
                       )}
                     </div>
@@ -888,7 +888,7 @@ export function WellDetailsModal({
                           </p>
                         ))}
                         <p className="text-foreground/90 font-medium pt-0.5">
-                          AquaSense Data Integrity: Only verified records from the database are plotted. No synthetic observations have been fabricated to fill unmonitored historical gaps.
+                          SAM Data Integrity: Only verified records from the database are plotted. No synthetic observations have been fabricated to fill unmonitored historical gaps.
                         </p>
                       </div>
                     </div>

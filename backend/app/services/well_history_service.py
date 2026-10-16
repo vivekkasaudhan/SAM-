@@ -146,7 +146,7 @@ class WellHistoryService:
                         "to": earliest_tz.isoformat(),
                         "type": "PRIOR_TO_COMMISSIONING",
                         "duration_days": gap_days,
-                        "reason": f"Telemetry history prior to {earliest_tz.strftime('%b %d, %Y')} is unrecorded ({gap_days} days). AquaSense zero-fabrication policy preserves true observation history.",
+                        "reason": f"Telemetry history prior to {earliest_tz.strftime('%b %d, %Y')} is unrecorded ({gap_days} days). SAM zero-fabrication policy preserves true observation history.",
                     })
 
                 # 2. Check if requested end date extends past latest recorded reading
@@ -347,7 +347,7 @@ class WellHistoryService:
             )
 
             provenance_notice = (
-                "DEMO / SIMULATED HISTORY: Records across this historical period were synthesized by the AquaSense Hydrological Simulation Engine for demo and workflow testing. Not collected by physical sensors."
+                "DEMO / SIMULATED HISTORY: Records across this historical period were synthesized by the SAM Hydrological Simulation Engine for demo and workflow testing. Not collected by physical sensors."
                 if is_demo_history
                 else "EMPIRICAL SENSOR HISTORY: Verified records recorded by installed physical telemetry."
             )

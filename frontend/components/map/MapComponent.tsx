@@ -358,7 +358,7 @@ export default function MapComponent({
   if (!mounted) {
     return (
       <div className="w-full h-full bg-muted/40 flex items-center justify-center">
-        <div className="text-muted-foreground text-sm font-medium animate-pulse">Initializing AquaSense GIS Map Engine...</div>
+        <div className="text-muted-foreground text-sm font-medium animate-pulse">Initializing SAM GIS Map Engine...</div>
       </div>
     );
   }

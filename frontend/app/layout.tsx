@@ -3,7 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "AquaSense – Environmental Intelligence Platform",
+  title: "SAM – Environmental Intelligence Platform",
   description: "Real-time interactive environmental monitoring platform for water levels, water quality, weather, and air quality.",
 };
 

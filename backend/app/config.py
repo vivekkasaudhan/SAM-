@@ -3,7 +3,7 @@ from typing import List
 import os
 
 class Settings(BaseSettings):
-    app_name: str = "AquaSense Environmental Intelligence"
+    app_name: str = "SAM Environmental Intelligence"
     debug: bool = True
     environment: str = "development"
     port: int = 8000

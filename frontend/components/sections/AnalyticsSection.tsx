@@ -59,7 +59,7 @@ const COMPARISONS = [
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const source = payload[0]?.payload?.source || 'AquaSense Analytics Engine';
+  const source = payload[0]?.payload?.source || 'SAM Analytics Engine';
   return (
     <div className="bg-card border rounded-lg shadow-xl p-3 text-xs space-y-1 z-50">
       <div className="font-semibold text-foreground border-b pb-1 mb-1">{label}</div>

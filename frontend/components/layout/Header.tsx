@@ -114,7 +114,7 @@ export function Header({ activeTab, onTabChange, isWsConnected = true }: HeaderP
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base sm:text-lg font-bold tracking-tight text-foreground group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                  AquaSense
+                  SAM
                 </span>
                 <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border border-cyan-500/20">
                   Enterprise
@@ -300,7 +300,7 @@ export function Header({ activeTab, onTabChange, isWsConnected = true }: HeaderP
                   </div>
                 ) : (
                   <div className="px-3.5 py-2.5 border-b bg-muted/30">
-                    <div className="font-bold text-foreground">AquaSense Portal</div>
+                    <div className="font-bold text-foreground">SAM Portal</div>
                     <div className="text-[11px] text-muted-foreground">Hydrological Monitoring</div>
                   </div>
                 )}
